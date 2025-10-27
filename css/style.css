@@ -1,0 +1,62 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/Other/CascadeStyleSheet.css to edit this template
+*/
+/* 
+    Created on : 26 Aug 2025, 6:50:41 pm
+    Author     : Rachel Ng
+*/
+
+/* style.css - Maison Sakura Bakery Register Pages */
+
+/* Background gradient */
+body {
+  background: linear-gradient(135deg, #f9d5d3, #fef9f8);
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Branding header */
+.brand-header {
+  text-align: center;
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #d6336c; /* Sakura pink */
+  margin-bottom: 20px;
+}
+
+/* Card styling */
+.card {
+  border-radius: 15px;
+  border: none;
+}
+
+/* Input focus effect */
+.form-control:focus {
+  border-color: #d6336c;
+  box-shadow: 0 0 8px rgba(214, 51, 108, 0.3);
+}
+
+/* Button styles per role */
+.btn-customer {
+  background-color: #198754; /* Green */
+  color: #fff;
+}
+.btn-customer:hover {
+  background-color: #157347;
+}
+
+.btn-admin {
+  background-color: #0d6efd; /* Blue */
+  color: #fff;
+}
+.btn-admin:hover {
+  background-color: #0b5ed7;
+}
+
+.btn-superadmin {
+  background-color: #dc3545; /* Red */
+  color: #fff;
+}
+.btn-superadmin:hover {
+  background-color: #bb2d3b;
+}
