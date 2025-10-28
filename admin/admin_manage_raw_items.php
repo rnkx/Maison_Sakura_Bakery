@@ -1,5 +1,11 @@
 <?php
 session_start();
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\Exception;
+
+require 'phpmailer/src/Exception.php';
+require 'phpmailer/src/PHPMailer.php';
+require 'phpmailer/src/SMTP.php';
 include("db.php");
 
 // ✅ Ensure only admin can access
@@ -9,7 +15,31 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 }
 
 $msg = "";
+function sendAlertEmail($to, $subject, $messageBody) {
+    $mail = new PHPMailer(true);
+    try {
+        // SMTP setup
+        $mail->isSMTP();
+        $mail->Host = 'smtp.gmail.com';        // or your domain mail server
+        $mail->SMTPAuth = true;
+        $mail->Username = 'your_email@gmail.com';   // your Gmail or domain email
+        $mail->Password = 'your_app_password';      // your Gmail App Password
+        $mail->SMTPSecure = 'tls';
+        $mail->Port = 587;
 
+        // Email details
+        $mail->setFrom('your_email@gmail.com', 'Maison Sakura System');
+        $mail->addAddress($to);
+        $mail->isHTML(true);
+        $mail->Subject = $subject;
+        $mail->Body = nl2br($messageBody);
+        $mail->AltBody = strip_tags($messageBody);
+
+        $mail->send();
+    } catch (Exception $e) {
+        error_log("Email could not be sent. Error: {$mail->ErrorInfo}");
+    }
+}
 // =====================
 // AUTO-RESET EXPIRED RAW ITEM STOCK
 // =====================
@@ -196,20 +226,19 @@ img { border-radius:8px; object-fit:cover; }
     <?php
     $expiry_date = new DateTime($r['expiry_date']);
     $days_to_expiry = $today->diff($expiry_date)->days;
-    $low_stock = ($r['current_stock'] < $low_stock_threshold);
+    $low_stock = ($r['current_stock'] <= $low_stock_threshold);
     $near_expiry = ($expiry_date >= $today && $days_to_expiry <= $expiry_warning_days);
 
     // --- Send Email if necessary ---
-    if ($low_stock || $near_expiry) {
-        $to = "rachel.ng.ker.xin@gmail.com"; // change to your email
-        $subject = "⚠️ Raw Item Alert: {$r['name']}";
-        $message = "Dear Admin,\n\nThere is an alert for the raw item '{$r['name']}':\n\n";
-        if ($low_stock) $message .= "- Stock is low (Current: {$r['current_stock']}).\n";
-        if ($near_expiry) $message .= "- Expiry date is near ({$r['expiry_date']}).\n";
-        $message .= "\nPlease take action accordingly.\n\nRegards,\nMaison Sakura System";
-        $headers = "From: system@maison-sakura.com";
-        @mail($to, $subject, $message, $headers);
-    }
+   if ($low_stock || $near_expiry) {
+    $to = "rachel.ng.ker.xin@gmail.com";  // real admin email
+    $subject = "⚠️ Raw Item Alert: {$r['name']}";
+    $message = "Dear Admin,\n\nThere is an alert for the raw item '{$r['name']}':\n\n";
+    if ($low_stock) $message .= "- Stock is low (Current: {$r['current_stock']}).\n";
+    if ($near_expiry) $message .= "- Expiry date is near ({$r['expiry_date']}).\n";
+    $message .= "\nPlease take action accordingly.\n\nRegards,\nMaison Sakura System";
+    sendAlertEmail($to, $subject, $message);
+}
 ?>
 <tr>
     <td><?= $r['raw_id'] ?></td>
@@ -221,7 +250,10 @@ img { border-radius:8px; object-fit:cover; }
     </td>
     <td><?= htmlspecialchars($r['unit']) ?></td>
     <td>
-        <?= $r['current_stock'] ?>
+          <?= htmlspecialchars($r['current_stock']) ?>
+      <?php if ($r['current_stock'] == 0): ?>
+    <span style="color:red; font-weight:bold;">⚠️ Out of Stock!</span>
+<?php endif; ?>
         <form method="POST">
             <input type="hidden" name="raw_id" value="<?= $r['raw_id'] ?>">
             <input type="number" name="stock_change" placeholder="+/-" required><br><br>
