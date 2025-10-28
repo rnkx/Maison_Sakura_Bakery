@@ -434,79 +434,94 @@ function confirmDelete() {
                 <th>Expiry</th>
                 <th>Actions</th>
             </tr>
-            
-            <?php while ($p = mysqli_fetch_assoc($products)): 
-            $today = new DateTime();
-            $expiryDate = !empty($p['expiry_date']) ? new DateTime($p['expiry_date']) : null;
-            $interval = $expiryDate ? $today->diff($expiryDate)->days : null;
-            $low_stock = $p['current_stock'] < $low_stock_threshold;
-            $near_expiry = $expiryDate && $expiryDate >= $today && $interval <= $expiry_warning_days;
-        ?>
-          <tr class="<?= ($low_stock || $near_expiry) ? 'low-stock' : '' ?>">
-                <td><?= $p['products_id'] ?></td>
-                <td style="width:120px;">
-                    <?php if($p['image']): ?>
-                        <img src="uploads/<?= htmlspecialchars($p['image']) ?>" width="80"><br>
-                    <?php endif; ?>
-                    <form method="POST" enctype="multipart/form-data" style="margin-top:6px;">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <input type="file" name="image" accept="image/*"><br><br>
-                        <button type="submit" name="update_image" class="small">Update Image</button>
-                    </form>
-                </td>
-             <td style="text-align:left;">
-    <strong><?= htmlspecialchars($p['name']) ?></strong>
-    <?php if (!empty($p['description'])): ?>
-        <br><span style="font-size:13px; color:#555;"><?= htmlspecialchars($p['description']) ?></span>
-    <?php endif; ?>
+     <?php while ($p = mysqli_fetch_assoc($products)): 
+    $today = new DateTime();
+    $expiryDate = !empty($p['expiry_date']) ? new DateTime($p['expiry_date']) : null;
+    $interval = $expiryDate ? $today->diff($expiryDate)->days : null;
 
-    <?php if ($low_stock || $near_expiry): ?>
-        <span class="alert-icon" title="Low stock or near expiry">⚠️</span>
-    <?php endif; ?>
-</td>
-                <td>
-                    <form method="POST">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <input type="number" step="0.01" name="price" value="<?= $p['price'] ?>" required><br><br>
-                        <button type="submit" name="update_price" class="update-btn">Update</button>
-                    </form>
-                </td>
-                <td>
-                    <form method="POST">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <input type="number" step="0.01" name="discount_percent" value="<?= $p['discount_percent'] ?>" required><br><br>
-                        <button type="submit" name="update_discount" class="update-btn">Update</button>
-                    </form>
-                </td>
-                <td>RM <?= number_format($p['price'] * (1 - ($p['discount_percent'] / 100)), 2) ?></td>
-                <td style="width:220px;">
-                    <strong><?= $p['current_stock'] ?></strong><br><br>
-                    <form method="POST">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <input type="number" name="stock_change" placeholder="+ produce / - adjust" required><br><br>
-                        <input type="text" name="reason" placeholder="Reason (e.g. restock, waste)" required><br><br>
-                        <?php $min_expiry = date('Y-m-d', strtotime('+3 days')); ?>
-                        <input type="date" name="expiry_date" min="<?= $min_expiry ?>" value="<?= $p['expiry_date'] ?>"><br><br>
-                        <button type="submit" name="update_stock" style="background:#e8a0a0;color:#fff;">Update Stock</button>
-                    </form>
-                </td>
-                <td>
-                    <form method="POST">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <input type="number" name="max_stock" value="<?= $p['max_stock'] ?>" min="0" required><br><br>
-                        <button type="submit" name="update_max_stock" class="small update-btn">Update Max</button>
-                    </form>
-                </td>
-                <td><?= $p['date_issued'] ?></td>
-                <td><?= $p['expiry_date'] ?></td>
-                <td>
-                    <form method="POST" onsubmit="return confirmDelete();">
-                        <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-                        <button type="submit" name="delete_product" class="delete-btn">Delete</button>
-                    </form>
-                </td>
-            </tr>
-            <?php endwhile; ?>
+    $low_stock = ($p['current_stock'] <= $low_stock_threshold && $p['current_stock'] > 0);
+    $out_of_stock = ($p['current_stock'] == 0);
+    $near_expiry = ($expiryDate && $expiryDate >= $today && $interval <= $expiry_warning_days);
+
+    // Highlight rows by condition
+    $row_class = $out_of_stock ? 'out-of-stock' : (($low_stock || $near_expiry) ? 'low-stock' : '');
+?>
+         <tr class="<?= $row_class ?>">
+    <td><?= $p['products_id'] ?></td>
+    <td style="width:120px;">
+        <?php if($p['image']): ?>
+            <img src="uploads/<?= htmlspecialchars($p['image']) ?>" width="80"><br>
+        <?php endif; ?>
+        <form method="POST" enctype="multipart/form-data" style="margin-top:6px;">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <input type="file" name="image" accept="image/*"><br><br>
+            <button type="submit" name="update_image" class="small">Update Image</button>
+        </form>
+    </td>
+
+    <td style="text-align:left;">
+        <strong><?= htmlspecialchars($p['name']) ?></strong>
+        <?php if (!empty($p['description'])): ?>
+            <br><span style="font-size:13px; color:#555;"><?= htmlspecialchars($p['description']) ?></span>
+        <?php endif; ?>
+
+        <!-- Alert icons beside name -->
+        <?php if ($out_of_stock): ?>
+            <span class="alert-icon" title="Out of Stock">🚫</span>
+        <?php elseif ($low_stock || $near_expiry): ?>
+            <span class="alert-icon" title="Low stock or near expiry">⚠️</span>
+        <?php endif; ?>
+    </td>
+
+    <td>
+        <form method="POST">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <input type="number" step="0.01" name="price" value="<?= $p['price'] ?>" required><br><br>
+            <button type="submit" name="update_price" class="update-btn">Update</button>
+        </form>
+    </td>
+
+    <td>
+        <form method="POST">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <input type="number" step="0.01" name="discount_percent" value="<?= $p['discount_percent'] ?>" required><br><br>
+            <button type="submit" name="update_discount" class="update-btn">Update</button>
+        </form>
+    </td>
+
+    <td>RM <?= number_format($p['price'] * (1 - ($p['discount_percent'] / 100)), 2) ?></td>
+
+    <td style="width:220px;">
+        <strong><?= $p['current_stock'] ?></strong>
+        <form method="POST" style="margin-top:8px;">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <input type="number" name="stock_change" placeholder="+ produce / - adjust" required><br><br>
+            <input type="text" name="reason" placeholder="Reason (e.g. restock, waste)" required><br><br>
+            <?php $min_expiry = date('Y-m-d', strtotime('+3 days')); ?>
+            <input type="date" name="expiry_date" min="<?= $min_expiry ?>" value="<?= $p['expiry_date'] ?>"><br><br>
+            <button type="submit" name="update_stock" style="background:#e8a0a0;color:#fff;">Update Stock</button>
+        </form>
+    </td>
+
+    <td>
+        <form method="POST">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <input type="number" name="max_stock" value="<?= $p['max_stock'] ?>" min="0" required><br><br>
+            <button type="submit" name="update_max_stock" class="small update-btn">Update Max</button>
+        </form>
+    </td>
+
+    <td><?= $p['date_issued'] ?></td>
+    <td><?= $p['expiry_date'] ?></td>
+
+    <td>
+        <form method="POST" onsubmit="return confirmDelete();">
+            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+            <button type="submit" name="delete_product" class="delete-btn">Delete</button>
+        </form>
+    </td>
+</tr>
+<?php endwhile; ?>
         </table>
     </div>
 </div>
