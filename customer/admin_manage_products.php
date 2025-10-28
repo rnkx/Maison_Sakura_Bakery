@@ -61,6 +61,14 @@ $conn->query("
       AND current_stock > 0
 ");
 
+// =====================
+// CONFIGURABLE ALERT SETTINGS
+// =====================
+$low_stock_threshold = 0; // Customize as needed
+$near_expiry_days = 2;
+$expiry_warning_days  = $near_expiry_days; // keep old name working
+
+//
 // -------------------------
 // ADD PRODUCT + RECIPE
 // -------------------------
@@ -426,8 +434,15 @@ function confirmDelete() {
                 <th>Expiry</th>
                 <th>Actions</th>
             </tr>
-            <?php while ($p = mysqli_fetch_assoc($products)): ?>
-            <tr>
+            
+            <?php while ($p = mysqli_fetch_assoc($products)): 
+            $today = new DateTime();
+            $expiryDate = !empty($p['expiry_date']) ? new DateTime($p['expiry_date']) : null;
+            $interval = $expiryDate ? $today->diff($expiryDate)->days : null;
+            $low_stock = $p['current_stock'] < $low_stock_threshold;
+            $near_expiry = $expiryDate && $expiryDate >= $today && $interval <= $expiry_warning_days;
+        ?>
+          <tr class="<?= ($low_stock || $near_expiry) ? 'low-stock' : '' ?>">
                 <td><?= $p['products_id'] ?></td>
                 <td style="width:120px;">
                     <?php if($p['image']): ?>
@@ -439,10 +454,16 @@ function confirmDelete() {
                         <button type="submit" name="update_image" class="small">Update Image</button>
                     </form>
                 </td>
-                <td style="text-align:left;">
-                    <strong><?= htmlspecialchars($p['name']) ?></strong><br>
-                    <span class="small"><?= htmlspecialchars($p['description']) ?></span>
-                </td>
+             <td style="text-align:left;">
+    <strong><?= htmlspecialchars($p['name']) ?></strong>
+    <?php if (!empty($p['description'])): ?>
+        <br><span style="font-size:13px; color:#555;"><?= htmlspecialchars($p['description']) ?></span>
+    <?php endif; ?>
+
+    <?php if ($low_stock || $near_expiry): ?>
+        <span class="alert-icon" title="Low stock or near expiry">⚠️</span>
+    <?php endif; ?>
+</td>
                 <td>
                     <form method="POST">
                         <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
