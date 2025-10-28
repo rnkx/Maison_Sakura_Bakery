@@ -20,6 +20,14 @@ mysqli_query($conn, "
       AND expiry_date <= CURDATE() 
       AND current_stock > 0
 ");
+// =====================
+// CONFIGURATION
+// =====================
+$low_stock_threshold = 10;
+$expiry_warning_days = 2;
+date_default_timezone_set('Asia/Kuala_Lumpur');
+$today = new DateTime();
+
 
 // =====================
 // ADD NEW RAW ITEM
@@ -185,10 +193,32 @@ img { border-radius:8px; object-fit:cover; }
 </tr>
 
 <?php while($r = mysqli_fetch_assoc($raw_items)): ?>
+    <?php
+    $expiry_date = new DateTime($r['expiry_date']);
+    $days_to_expiry = $today->diff($expiry_date)->days;
+    $low_stock = ($r['current_stock'] < $low_stock_threshold);
+    $near_expiry = ($expiry_date >= $today && $days_to_expiry <= $expiry_warning_days);
+
+    // --- Send Email if necessary ---
+    if ($low_stock || $near_expiry) {
+        $to = "rachel.ng.ker.xin@gmail.com"; // change to your email
+        $subject = "⚠️ Raw Item Alert: {$r['name']}";
+        $message = "Dear Admin,\n\nThere is an alert for the raw item '{$r['name']}':\n\n";
+        if ($low_stock) $message .= "- Stock is low (Current: {$r['current_stock']}).\n";
+        if ($near_expiry) $message .= "- Expiry date is near ({$r['expiry_date']}).\n";
+        $message .= "\nPlease take action accordingly.\n\nRegards,\nMaison Sakura System";
+        $headers = "From: system@maison-sakura.com";
+        @mail($to, $subject, $message, $headers);
+    }
+?>
 <tr>
     <td><?= $r['raw_id'] ?></td>
   
-    <td><?= htmlspecialchars($r['name']) ?></td>
+    <td>
+        <?= htmlspecialchars($r['name']) ?>
+        <?php if($low_stock): ?><span class="alert-icon low-stock" title="Low Stock">&#9888;</span><?php endif; ?>
+        <?php if($near_expiry): ?><span class="alert-icon expiring" title="Expiring Soon">&#x23F3;</span><?php endif; ?>
+    </td>
     <td><?= htmlspecialchars($r['unit']) ?></td>
     <td>
         <?= $r['current_stock'] ?>
