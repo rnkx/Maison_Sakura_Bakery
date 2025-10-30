@@ -112,7 +112,7 @@ a.reply-btn:hover {
 
     <table>
         <tr>
-            <th>ID</th>        
+            <th>ID</th>         
             <th>Name</th>
             <th>Email</th>
             <th>Message</th>
