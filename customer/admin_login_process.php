@@ -8,6 +8,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = "admin"; // fixed role
 
     if (!empty($email) && !empty($password)) {
+         // ✅ Get user info
         $sql = "SELECT users_id, fullname, email, password, role,  profile_image 
                 FROM users 
                 WHERE email = ? AND role = ?";
