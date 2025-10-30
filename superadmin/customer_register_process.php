@@ -1,6 +1,4 @@
 <?php
-
-
 // external php files connection
 include("db.php");
 
