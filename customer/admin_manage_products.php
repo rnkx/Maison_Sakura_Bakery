@@ -17,9 +17,8 @@ $msg = "";
 // -------------------------
 function validate_expiry($input) {
     $today = new DateTime(date('Y-m-d'));
-    if (empty($input)) {
-        return [true, date('Y-m-d', strtotime('+3 days'))];
-    }
+    if (empty($input)) return [true, date('Y-m-d', strtotime('+3 days'))];
+
     $expiry = DateTime::createFromFormat('Y-m-d', $input);
     if (!$expiry) return [false, "⚠️ Invalid expiry date format."];
     if ($expiry < $today) return [false, "⚠️ Expiry date cannot be in the past."];
@@ -61,17 +60,17 @@ $conn->query("
       AND current_stock > 0
 ");
 
-// =====================
-// CONFIGURABLE ALERT SETTINGS
-// =====================
-$low_stock_threshold = 0; // Customize as needed
+// -------------------------
+// Alert settings
+// -------------------------
+$low_stock_threshold = 0; 
 $near_expiry_days = 2;
-$expiry_warning_days  = $near_expiry_days; // keep old name working
 
-//
-// -------------------------
-// ADD PRODUCT + RECIPE
-// -------------------------
+// ==========================
+// HANDLE FORM SUBMISSIONS
+// ==========================
+
+// -------- ADD PRODUCT --------
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
     $name = trim($_POST['name'] ?? '');
     $desc = trim($_POST['description'] ?? '');
@@ -81,16 +80,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
     $max_stock = intval($_POST['max_stock'] ?? 0);
     $initial_stock = intval($_POST['initial_stock'] ?? 0);
     $calories = $weight > 0 ? round($weight * 4.2, 2) : 0;
-  $expiry_date = $_POST['expiry_date'] ?? '';
-    $min_date = date('Y-m-d', strtotime('+3 days'));
+    $expiry_date = $_POST['expiry_date'] ?? '';
 
-    
-    if ($expiry_date < $min_date) {
+    $min_date = date('Y-m-d', strtotime('+3 days'));
+    if ($expiry_date && $expiry_date < $min_date) {
         $msg = "⚠️ Expiry date must be at least 3 days from today.";
     } else {
-        $imageName = uploadImage($_FILES['image'] ?? [], "product_");
-        if (!$imageName) $imageName = "default.png";
+        $imageName = uploadImage($_FILES['image'] ?? [], "product_") ?: "default.png";
 
+        // Build recipe array
         $recipeInput = $_POST['recipe'] ?? [];
         $recipe = [];
         foreach ($recipeInput as $rid => $qty) {
@@ -101,17 +99,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
 
         mysqli_begin_transaction($conn);
         try {
-              $stmt = $conn->prepare("
-        INSERT INTO products 
-        (name, description, price, discount_percent, weight, image, current_stock, calories, max_stock, date_issued, expiry_date, expiry_duration)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
-    ");
+            // Insert product
+            $stmt = $conn->prepare("
+                INSERT INTO products 
+                (name, description, price, discount_percent, weight, image, current_stock, calories, max_stock, date_issued, expiry_date, expiry_duration)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), ?, ?)
+            ");
             $expDur = 3;
             $stmt->bind_param("ssddssiiisi", $name, $desc, $price, $discount, $weight, $imageName, $initial_stock, $calories, $max_stock, $expiry_date, $expDur);
             if (!$stmt->execute()) throw new Exception("Failed to insert product: " . $stmt->error);
             $productId = $stmt->insert_id;
             $stmt->close();
 
+            // Insert recipe
             if (!empty($recipe)) {
                 $rStmt = $conn->prepare("INSERT INTO product_recipes (products_id, raw_id, quantity) VALUES (?, ?, ?)");
                 foreach ($recipe as $rid => $q) {
@@ -121,6 +121,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
                 $rStmt->close();
             }
 
+            // Deduct raw stock for initial production
             if ($initial_stock > 0 && !empty($recipe)) {
                 foreach ($recipe as $rid => $qPerUnit) {
                     $required = $qPerUnit * $initial_stock;
@@ -130,25 +131,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
                     $chk->bind_result($currentRaw);
                     $chk->fetch();
                     $chk->close();
-                    if ($currentRaw < $required) {
-                        throw new Exception("Not enough " . getRawName($rid, $conn) . " (need $required, have $currentRaw)");
-                    }
+                    if ($currentRaw < $required) throw new Exception("Not enough " . getRawName($rid, $conn));
                 }
 
                 $upd = $conn->prepare("UPDATE raw_items SET current_stock = current_stock - ? WHERE raw_id = ?");
-                $log = $conn->prepare("INSERT INTO raw_item_stock_history (raw_id, stock_change, reason, date_updated, created_at)
-                                       VALUES (?, ?, ?, NOW(), NOW())");
+                $log = $conn->prepare("
+                    INSERT INTO raw_item_stock_history (raw_id, stock_change, reason, date_updated, created_at)
+                    VALUES (?, ?, ?, NOW(), NOW())
+                ");
                 $reason = "Used for new product (ID: $productId)";
                 foreach ($recipe as $rid => $qPerUnit) {
                     $deduct = $qPerUnit * $initial_stock;
                     $upd->bind_param("di", $deduct, $rid);
-                    if (!$upd->execute()) throw new Exception("Failed to deduct raw item: " . $upd->error);
+                    $upd->execute();
                     $neg = -$deduct;
                     $log->bind_param("ids", $rid, $neg, $reason);
                     $log->execute();
                 }
-                $upd->close();
-                $log->close();
+                $upd->close(); $log->close();
             }
 
             mysqli_commit($conn);
@@ -161,45 +161,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
     }
 }
 
-// -------------------------
-// UPDATE PRICE / DISCOUNT / MAX STOCK
-// -------------------------
-if (isset($_POST['update_price'])) {
-    $id = intval($_POST['product_id']);
-    $price = floatval($_POST['price']);
-    $stmt = $conn->prepare("UPDATE products SET price = ? WHERE products_id = ?");
-    $stmt->bind_param("di", $price, $id);
-    $msg = $stmt->execute() ? "✅ Price updated!" : "❌ Failed to update price.";
-    $stmt->close();
+// -------- UPDATE PRICE / DISCOUNT / MAX STOCK --------
+foreach (['price', 'discount_percent', 'max_stock'] as $field) {
+    $postKey = "update_" . $field;
+    if (isset($_POST[$postKey])) {
+        $id = intval($_POST['product_id']);
+        $val = ($field === 'max_stock') ? intval($_POST[$field]) : floatval($_POST[$field]);
+        $stmt = $conn->prepare("UPDATE products SET $field = ? WHERE products_id = ?");
+        $stmt->bind_param(($field === 'max_stock') ? "ii" : "di", $val, $id);
+        $msg = $stmt->execute() ? "✅ $field updated!" : "❌ Failed to update $field.";
+        $stmt->close();
+    }
 }
 
-if (isset($_POST['update_discount'])) {
-    $id = intval($_POST['product_id']);
-    $discount = floatval($_POST['discount_percent']);
-    $stmt = $conn->prepare("UPDATE products SET discount_percent = ? WHERE products_id = ?");
-    $stmt->bind_param("di", $discount, $id);
-    $msg = $stmt->execute() ? "✅ Discount updated!" : "❌ Failed to update discount.";
-    $stmt->close();
-}
-
-if (isset($_POST['update_max_stock'])) {
-    $id = intval($_POST['product_id']);
-    $max = intval($_POST['max_stock']);
-    $stmt = $conn->prepare("UPDATE products SET max_stock = ? WHERE products_id = ?");
-    $stmt->bind_param("ii", $max, $id);
-    $msg = $stmt->execute() ? "✅ Max stock updated!" : "❌ Failed to update max stock.";
-    $stmt->close();
-}
-// -------------------------
-// UPDATE STOCK (restock or reduce)
-// -------------------------
+// -------- UPDATE STOCK --------
 if (isset($_POST['update_stock'])) {
     $id = intval($_POST['product_id']);
-    $change = intval($_POST['stock_change']); // + produce/restock, - adjust/reduce
+    $change = intval($_POST['stock_change']);
     $reason = trim($_POST['reason'] ?? 'Stock update');
     $expiry = $_POST['expiry_date'] ?? date('Y-m-d');
 
-    // 🧩 Get current and max stock
     $stmt = $conn->prepare("SELECT current_stock, max_stock FROM products WHERE products_id = ?");
     $stmt->bind_param("i", $id);
     $stmt->execute();
@@ -209,35 +190,24 @@ if (isset($_POST['update_stock'])) {
 
     $newStock = max(0, $currStock + $change);
 
-    // ✅ Restrict restocking if stock not zero
     if ($change > 0 && $currStock > 0) {
-        $msg = "⚠️ Cannot restock: Current stock ($currStock) must be 0 before producing new batch.";
-    }
-    // ✅ Prevent exceeding maximum capacity
-    elseif ($change > 0 && $newStock > $maxStock) {
-        $msg = "⚠️ Cannot restock: Exceeds maximum capacity of $maxStock units.";
-    }
-    else {
-        // ✅ Only deduct raw items when increasing stock (production)
+        $msg = "⚠️ Cannot restock: Current stock must be 0 before producing new batch.";
+    } elseif ($change > 0 && $newStock > $maxStock) {
+        $msg = "⚠️ Cannot restock: Exceeds maximum stock of $maxStock units.";
+    } else {
         if ($change > 0) {
             mysqli_begin_transaction($conn);
             try {
-                // 1️⃣ Get existing recipe
                 $r = $conn->prepare("SELECT raw_id, quantity FROM product_recipes WHERE products_id = ?");
                 $r->bind_param("i", $id);
                 $r->execute();
                 $res = $r->get_result();
                 $recipe = [];
-                while ($row = $res->fetch_assoc()) {
-                    $recipe[$row['raw_id']] = $row['quantity'];
-                }
+                while ($row = $res->fetch_assoc()) $recipe[$row['raw_id']] = $row['quantity'];
                 $r->close();
 
-                if (empty($recipe)) {
-                    throw new Exception("⚠️ No recipe found for this product. Please define ingredients first.");
-                }
+                if (empty($recipe)) throw new Exception("No recipe found for this product.");
 
-                // 2️⃣ Verify raw stock availability
                 foreach ($recipe as $rid => $qPerUnit) {
                     $required = $qPerUnit * $change;
                     $chk = $conn->prepare("SELECT current_stock FROM raw_items WHERE raw_id = ?");
@@ -246,63 +216,43 @@ if (isset($_POST['update_stock'])) {
                     $chk->bind_result($rawStock);
                     $chk->fetch();
                     $chk->close();
-
-                    if ($rawStock < $required) {
-                        throw new Exception("❌ Not enough " . getRawName($rid, $conn) . " (Need $required, Have $rawStock)");
-                    }
+                    if ($rawStock < $required) throw new Exception("❌ Not enough " . getRawName($rid, $conn));
                 }
 
-                // 3️⃣ Deduct raw items and log
                 $upd = $conn->prepare("UPDATE raw_items SET current_stock = current_stock - ? WHERE raw_id = ?");
-                $log = $conn->prepare("
-                    INSERT INTO raw_item_stock_history (raw_id, stock_change, reason, date_updated, created_at)
-                    VALUES (?, ?, ?, NOW(), NOW())");
+                $log = $conn->prepare("INSERT INTO raw_item_stock_history (raw_id, stock_change, reason, date_updated, created_at) VALUES (?, ?, ?, NOW(), NOW())");
                 foreach ($recipe as $rid => $qPerUnit) {
                     $deduct = $qPerUnit * $change;
                     $upd->bind_param("di", $deduct, $rid);
-                    if (!$upd->execute()) throw new Exception("Failed to deduct raw item: " . $upd->error);
+                    $upd->execute();
                     $neg = -$deduct;
                     $log->bind_param("ids", $rid, $neg, $reason);
                     $log->execute();
                 }
-                $upd->close();
-                $log->close();
+                $upd->close(); $log->close();
 
-                // 4️⃣ Update product stock and expiry
                 $p = $conn->prepare("UPDATE products SET current_stock = ?, expiry_date = ?, date_issued = NOW() WHERE products_id = ?");
                 $p->bind_param("isi", $newStock, $expiry, $id);
-                if (!$p->execute()) throw new Exception("Failed to update product stock: " . $p->error);
-                $p->close();
+                $p->execute(); $p->close();
 
-                // 5️⃣ Log product restock with date issued
-                $logProduct = $conn->prepare("
-                    INSERT INTO product_stock (products_id, stock_change, reason, date_issued, expiry_date, created_at)
-                    VALUES (?, ?, ?, NOW(), ?, NOW())
-                ");
+                $logProduct = $conn->prepare("INSERT INTO product_stock (products_id, stock_change, reason, date_issued, expiry_date, created_at) VALUES (?, ?, ?, NOW(), ?, NOW())");
                 $logProduct->bind_param("idss", $id, $change, $reason, $expiry);
-                $logProduct->execute();
-                $logProduct->close();
+                $logProduct->execute(); $logProduct->close();
 
                 mysqli_commit($conn);
-                $msg = "✅ Successfully produced $change units — raw materials deducted!";
+                $msg = "✅ Successfully produced $change units.";
             } catch (Exception $e) {
                 mysqli_rollback($conn);
                 $msg = "❌ " . $e->getMessage();
             }
         } else {
-            // 🔻 Adjust or reduce stock (no raw deduction)
             $p = $conn->prepare("UPDATE products SET current_stock = ?, expiry_date = ?, date_issued = NOW() WHERE products_id = ?");
             $p->bind_param("isi", $newStock, $expiry, $id);
             if ($p->execute()) {
-                // Log reduction
-                $logProduct = $conn->prepare("
-                    INSERT INTO product_stock (products_id, stock_change, reason, date_issued, expiry_date, created_at)
-                    VALUES (?, ?, ?, NOW(), ?, NOW())
-                ");
+                $logProduct = $conn->prepare("INSERT INTO product_stock (products_id, stock_change, reason, date_issued, expiry_date, created_at) VALUES (?, ?, ?, NOW(), ?, NOW())");
                 $logProduct->bind_param("idss", $id, $change, $reason, $expiry);
                 $logProduct->execute();
                 $logProduct->close();
-
                 $msg = "✅ Product stock reduced successfully.";
             } else {
                 $msg = "❌ Failed to update product stock.";
@@ -312,11 +262,7 @@ if (isset($_POST['update_stock'])) {
     }
 }
 
-
-
-// -------------------------
-// DELETE PRODUCT
-// -------------------------
+// -------- DELETE PRODUCT --------
 if (isset($_POST['delete_product'])) {
     $id = intval($_POST['product_id']);
     $sel = $conn->prepare("SELECT image FROM products WHERE products_id = ?");
@@ -325,10 +271,11 @@ if (isset($_POST['delete_product'])) {
     $sel->bind_result($img);
     $sel->fetch();
     $sel->close();
-    if (!empty($img) && file_exists("uploads/$img")) unlink("uploads/$img");
+    if ($img && file_exists("uploads/$img")) unlink("uploads/$img");
+
     $del = $conn->prepare("DELETE FROM products WHERE products_id = ?");
     $del->bind_param("i", $id);
-    $msg = $del->execute() ? "🗑️ Product deleted!" : "❌ Failed to delete.";
+    $msg = $del->execute() ? "🗑️ Product deleted!" : "❌ Failed to delete product.";
     $del->close();
 }
 
@@ -349,8 +296,8 @@ body { font-family: Arial, sans-serif; background:#fff8f5; padding:20px; }
 h2 { text-align:center; color:#c56b6b; }
 .container { max-width:1200px; margin:0 auto; }
 .panel { background:#fff; padding:15px; border-radius:12px; box-shadow:0 2px 6px rgba(0,0,0,0.04); margin-bottom:20px; }
-table { width:100%; border-collapse:collapse; margin-top:10px; background:#fff; border-radius:12px; overflow:hidden; }
-th, td { border:1px solid #eee; padding:10px; text-align:center; vertical-align:middle; }
+table { width:100%; border-collapse:collapse; margin-top:10px; }
+th, td { border:1px solid #eee; padding:10px; text-align:center; }
 th { background:#c56b6b; color:#fff; }
 tr:hover { background:#fff2ef; }
 input, textarea, select { padding:8px; border-radius:6px; border:1px solid #ccc; width:95%; box-sizing:border-box; }
@@ -359,8 +306,9 @@ button { border:none; border-radius:6px; padding:8px 12px; cursor:pointer; }
 .error-msg { background:#f8d7da; color:#721c24; padding:10px; border-radius:8px; margin:10px 0; font-weight:bold; text-align:center; }
 img { border-radius:8px; object-fit:cover; }
 .small { font-size:0.9em; color:#666; }
-.label-inline { display:inline-block; width:45%; margin-right:4%; text-align:left; }
 .recipe-row { display:flex; gap:10px; align-items:center; margin-bottom:8px; }
+.out-of-stock { background:#f8d7da; }
+.low-stock { background:#fff3cd; }
 </style>
 <script>
 function confirmDelete() {
@@ -370,160 +318,145 @@ function confirmDelete() {
 </head>
 <body>
 <div class="container">
-    <?php if(!empty($msg)): ?>
-        <div class="<?= (strpos($msg,'❌') === 0 || strpos($msg,'⚠️') === 0) ? 'error-msg' : 'success-msg' ?>">
-            <?= htmlspecialchars($msg) ?>
-        </div>
-    <?php endif; ?>
-
-    <h2>🍞 Product Management & Stock</h2>
-<form action="admin_index.php" method="get">
-    <button type="submit" class="back-btn">⬅️ Back to Dashboard</button><br><br>
-</form>
-    <div class="panel">
-        <form method="POST" enctype="multipart/form-data">
-            <h3>Add New Product</h3>
-            <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <div style="flex:1; min-width:250px;">
-                    <input type="text" name="name" placeholder="Product Name" required><br><br>
-                    <textarea name="description" placeholder="Description" required></textarea><br><br>
-                    <input type="number" step="0.1" name="weight" placeholder="Weight (g)" required><br><br>
-                    <input type="number" step="0.01" name="price" placeholder="Price (RM)" required><br><br>
-                </div>
-                <div style="flex:1; min-width:250px;">
-                    <input type="number" step="0.01" name="discount_percent" placeholder="Discount (%)" min="0" max="100"><br><br>
-                    <input type="number" name="max_stock" placeholder="Maximum Stock" required><br><br>
-                    <input type="number" name="initial_stock" placeholder="Initial stock to produce (0 if none)" required><br><br>
-                    <?php $min_expiry = date('Y-m-d', strtotime('+3 days')); ?>
-                    <input type="date" name="expiry_date" min="<?= $min_expiry ?>"  placeholder="Expiry date"><br><br>
-                    <input type="file" name="image" accept="image/*">
-                </div>
-            </div>
-
-            <h4>Recipe (Raw Items needed per 1 product)</h4>
-            <div style="max-height:220px; overflow:auto; border:1px solid #eee; padding:10px; border-radius:8px;">
-                <?php while ($raw = mysqli_fetch_assoc($raw_list)): ?>
-                    <div class="recipe-row">
-                        <div style="flex:1; text-align:left;">
-                            <strong><?= htmlspecialchars($raw['name']) ?></strong> <span class="small">(<?= htmlspecialchars($raw['unit']) ?>)</span>
-                        </div>
-                        <div style="width:150px;">
-                            <input type="number" step="0.01" name="recipe[<?= $raw['raw_id'] ?>]" placeholder="qty per unit">
-                        </div>
-                    </div>
-                <?php endwhile; ?>
-            </div>
-            <br>
-            <button type="submit" name="add_product" style="background:#c56b6b;color:#fff;">➕ Add Product</button>
-        </form>
+<?php if($msg): ?>
+    <div class="<?= (strpos($msg,'❌')===0 || strpos($msg,'⚠️')===0) ? 'error-msg' : 'success-msg' ?>">
+        <?= htmlspecialchars($msg) ?>
     </div>
+<?php endif; ?>
 
-    <div class="panel">
-        <h3>Existing Products</h3>
-        <table>
-            <tr>
-                <th>ID</th>
-                <th>Image</th>
-                <th>Name</th>
-                <th>Price (RM)</th>
-                <th>Discount (%)</th>
-                <th>Price After Discount (RM)</th>
-                <th>Current Stock</th>
-                <th>Max Stock</th>
-                <th>Date Issued</th>
-                <th>Expiry</th>
-                <th>Actions</th>
-            </tr>
-     <?php while ($p = mysqli_fetch_assoc($products)): 
-    $today = new DateTime();
-    $expiryDate = !empty($p['expiry_date']) ? new DateTime($p['expiry_date']) : null;
-    $interval = $expiryDate ? $today->diff($expiryDate)->days : null;
+<h2>🍞 Product Management & Stock</h2>
+<form action="admin_index.php" method="get"><button type="submit">⬅️ Back to Dashboard</button></form>
+<br>
 
-    $low_stock = ($p['current_stock'] <= $low_stock_threshold && $p['current_stock'] > 0);
-    $out_of_stock = ($p['current_stock'] == 0);
-    $near_expiry = ($expiryDate && $expiryDate >= $today && $interval <= $expiry_warning_days);
+<!-- Add Product Panel -->
+<div class="panel">
+<form method="POST" enctype="multipart/form-data">
+<h3>Add New Product</h3>
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+    <div style="flex:1; min-width:250px;">
+        <input type="text" name="name" placeholder="Product Name" required><br><br>
+        <textarea name="description" placeholder="Description" required></textarea><br><br>
+        <input type="number" step="0.1" name="weight" placeholder="Weight (g)" required><br><br>
+        <input type="number" step="0.01" name="price" placeholder="Price (RM)" required><br><br>
+    </div>
+    <div style="flex:1; min-width:250px;">
+        <input type="number" step="0.01" name="discount_percent" placeholder="Discount (%)" min="0" max="100"><br><br>
+        <input type="number" name="max_stock" placeholder="Maximum Stock" required><br><br>
+        <input type="number" name="initial_stock" placeholder="Initial stock to produce" required><br><br>
+        <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>"><br><br>
+        <input type="file" name="image" accept="image/*">
+    </div>
+</div>
 
-    // Highlight rows by condition
-    $row_class = $out_of_stock ? 'out-of-stock' : (($low_stock || $near_expiry) ? 'low-stock' : '');
+<h4>Recipe (Raw Items per product)</h4>
+<div style="max-height:220px; overflow:auto; border:1px solid #eee; padding:10px; border-radius:8px;">
+<?php while ($raw = mysqli_fetch_assoc($raw_list)): ?>
+    <div class="recipe-row">
+        <div style="flex:1; text-align:left;">
+            <strong><?= htmlspecialchars($raw['name']) ?></strong> <span class="small">(<?= htmlspecialchars($raw['unit']) ?>)</span>
+        </div>
+        <div style="width:150px;">
+            <input type="number" step="0.01" name="recipe[<?= $raw['raw_id'] ?>]" placeholder="qty per unit">
+        </div>
+    </div>
+<?php endwhile; ?>
+</div><br>
+<button type="submit" name="add_product" style="background:#c56b6b;color:#fff;">➕ Add Product</button>
+</form>
+</div>
+
+<!-- Existing Products Panel -->
+<div class="panel">
+<h3>Existing Products</h3>
+<table>
+<tr>
+<th>ID</th><th>Image</th><th>Name</th><th>Price</th><th>Discount</th><th>Price After Discount</th>
+<th>Current Stock</th><th>Max Stock</th><th>Date Issued</th><th>Expiry</th><th>Status</th><th>Actions</th>
+</tr>
+<?php while ($p = mysqli_fetch_assoc($products)):
+$today = new DateTime();
+$expiryDate = !empty($p['expiry_date']) ? new DateTime($p['expiry_date']) : null;
+$interval = $expiryDate ? $today->diff($expiryDate)->days : null;
+$out_of_stock = $p['current_stock'] == 0;
+$low_stock = $p['current_stock'] <= $low_stock_threshold && !$out_of_stock;
+$near_expiry = $expiryDate && $expiryDate >= $today && $interval <= $near_expiry_days;
+$expired = $expiryDate && $expiryDate < $today;
+$row_class = $out_of_stock ? 'out-of-stock' : (($low_stock || $near_expiry) ? 'low-stock' : '');
 ?>
-         <tr class="<?= $row_class ?>">
-    <td><?= $p['products_id'] ?></td>
-    <td style="width:120px;">
-        <?php if($p['image']): ?>
-            <img src="uploads/<?= htmlspecialchars($p['image']) ?>" width="80"><br>
-        <?php endif; ?>
-        <form method="POST" enctype="multipart/form-data" style="margin-top:6px;">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <input type="file" name="image" accept="image/*"><br><br>
-            <button type="submit" name="update_image" class="small">Update Image</button>
-        </form>
-    </td>
-
-    <td style="text-align:left;">
-        <strong><?= htmlspecialchars($p['name']) ?></strong>
-        <?php if (!empty($p['description'])): ?>
-            <br><span style="font-size:13px; color:#555;"><?= htmlspecialchars($p['description']) ?></span>
-        <?php endif; ?>
-
-        <!-- Alert icons beside name -->
-        <?php if ($out_of_stock): ?>
-            <span class="alert-icon" title="Out of Stock">🚫</span>
-        <?php elseif ($low_stock || $near_expiry): ?>
-            <span class="alert-icon" title="Low stock or near expiry">⚠️</span>
-        <?php endif; ?>
-    </td>
-
-    <td>
-        <form method="POST">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <input type="number" step="0.01" name="price" value="<?= $p['price'] ?>" required><br><br>
-            <button type="submit" name="update_price" class="update-btn">Update</button>
-        </form>
-    </td>
-
-    <td>
-        <form method="POST">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <input type="number" step="0.01" name="discount_percent" value="<?= $p['discount_percent'] ?>" required><br><br>
-            <button type="submit" name="update_discount" class="update-btn">Update</button>
-        </form>
-    </td>
-
-    <td>RM <?= number_format($p['price'] * (1 - ($p['discount_percent'] / 100)), 2) ?></td>
-
-    <td style="width:220px;">
-        <strong><?= $p['current_stock'] ?></strong>
-        <form method="POST" style="margin-top:8px;">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <input type="number" name="stock_change" placeholder="+ produce / - adjust" required><br><br>
-            <input type="text" name="reason" placeholder="Reason (e.g. restock, waste)" required><br><br>
-            <?php $min_expiry = date('Y-m-d', strtotime('+3 days')); ?>
-            <input type="date" name="expiry_date" min="<?= $min_expiry ?>" value="<?= $p['expiry_date'] ?>"><br><br>
-            <button type="submit" name="update_stock" style="background:#e8a0a0;color:#fff;">Update Stock</button>
-        </form>
-    </td>
-
-    <td>
-        <form method="POST">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <input type="number" name="max_stock" value="<?= $p['max_stock'] ?>" min="0" required><br><br>
-            <button type="submit" name="update_max_stock" class="small update-btn">Update Max</button>
-        </form>
-    </td>
-
-    <td><?= $p['date_issued'] ?></td>
-    <td><?= $p['expiry_date'] ?></td>
-
-    <td>
-        <form method="POST" onsubmit="return confirmDelete();">
-            <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-            <button type="submit" name="delete_product" class="delete-btn">Delete</button>
-        </form>
-    </td>
+<tr class="<?= $row_class ?>">
+<td><?= $p['products_id'] ?></td>
+<td>
+<?php if($p['image']): ?><img src="uploads/<?= htmlspecialchars($p['image']) ?>" width="80"><br><?php endif; ?>
+<form method="POST" enctype="multipart/form-data">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<input type="file" name="image" accept="image/*"><br><br>
+<button type="submit" name="update_image" class="small">Update Image</button>
+</form>
+</td>
+<td style="text-align:left;">
+<strong><?= htmlspecialchars($p['name']) ?></strong><br>
+<span class="small"><?= htmlspecialchars($p['description']) ?></span>
+<?php if ($out_of_stock): ?><span title="Out of Stock">🚫</span>
+<?php elseif ($low_stock || $near_expiry): ?><span title="Low stock / near expiry">⚠️</span><?php endif; ?>
+</td>
+<td>
+<form method="POST">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<input type="number" step="0.01" name="price" value="<?= $p['price'] ?>" required><br><br>
+<button type="submit" name="update_price">Update</button>
+</form>
+</td>
+<td>
+<form method="POST">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<input type="number" step="0.01" name="discount_percent" value="<?= $p['discount_percent'] ?>" required><br><br>
+<button type="submit" name="update_discount">Update</button>
+</form>
+</td>
+<td>RM <?= number_format($p['price']*(1-$p['discount_percent']/100),2) ?></td>
+<td>
+<strong><?= $p['current_stock'] ?></strong>
+<form method="POST">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<input type="number" name="stock_change" placeholder="+ produce / - adjust" required><br><br>
+<input type="text" name="reason" placeholder="Reason" required><br><br>
+<input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>" value="<?= $p['expiry_date'] ?>"><br><br>
+<button type="submit" name="update_stock" style="background:#e8a0a0;color:#fff;">Update Stock</button>
+</form>
+</td>
+<td>
+<form method="POST">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<input type="number" name="max_stock" value="<?= $p['max_stock'] ?>" min="0" required><br><br>
+<button type="submit" name="update_max_stock">Update Max</button>
+</form>
+</td>
+<td><?= $p['date_issued'] ?></td>
+<td><?= $p['expiry_date'] ?></td>
+<td>
+<?php if($expired): ?>
+    <span class="status expired">Expired ❌</span>
+<?php elseif($out_of_stock): ?>
+    <span class="status out-of-stock">Out of Stock 🚫</span>
+<?php elseif($near_expiry): ?>
+    <span class="status expiring-soon">Expiring Soon ⚠️</span>
+<?php elseif($low_stock): ?>
+    <span class="status low-stock">Low Stock ⚠️</span>
+<?php else: ?>
+    <span class="status">Available ✅</span>
+<?php endif; ?>
+</td>
+<td>
+<form method="POST" onsubmit="return confirmDelete();">
+<input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
+<button type="submit" name="delete_product">Delete</button>
+</form>
+</td>
 </tr>
 <?php endwhile; ?>
-        </table>
-    </div>
+</table>
+</div>
 </div>
 </body>
 </html>
+
