@@ -1,14 +1,5 @@
 <?php include("db.php");
-
 session_start(); 
-if (isset($_SESSION['success'])) {
-    echo "<div style='color: green; font-weight: bold; margin-bottom: 10px;'>" . $_SESSION['success'] . "</div>";
-    unset($_SESSION['success']); // clear after showing
-}
-if (isset($_SESSION['error'])) {
-    echo "<div style='color: red; font-weight: bold; margin-bottom: 10px;'>" . $_SESSION['error'] . "</div>";
-    unset($_SESSION['error']);
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -51,18 +42,14 @@ if (isset($_SESSION['error'])) {
 
 <div class="container mt-5">
   <div class="row justify-content-center">
-    <div class="col-md-6 col-lg-5">
+    <div class="col-md-6">
       <div class="card shadow-lg rounded-3">
         <div class="card-body p-4">
-
-          <!-- Logo & Title -->
           <div class="d-flex align-items-center justify-content-center mb-4">
-            <img src="img/logo.jpg" alt="Maison Sakura Logo" 
-                 width="100" height="100" class="me-3">
+            <img src="img/logo.jpg" alt="Maison Sakura Logo" width="100" height="100" class="me-3">
             <h3 class="m-0">Customer Login</h3>
           </div>
-
-          <!-- Error Message -->
+ <!-- Error Message -->
           <?php if (isset($_SESSION['error'])): ?>
             <div class="alert alert-danger text-center" role="alert">
               <?php 
