@@ -88,7 +88,7 @@ $cart_items->data_seek(0); // reset pointer
       color: white;
       padding: 20px;
       text-align: center;
-      margin-top: 310px;
+      margin-top: 600px;
     }
     nav ul { list-style:none; display:flex; gap:20px; margin:0; padding:0; }
     nav ul li a { text-decoration:none; color:white; font-weight:600; padding:8px 14px; border-radius:5px; }
