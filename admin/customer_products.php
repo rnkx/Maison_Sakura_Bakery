@@ -7,8 +7,11 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
     header("Location: login_customer.php");
     exit();
 }
+
 // Capture search keyword & category
 $search = $_GET['search'] ?? '';
+
+
 
 // Get customer_id from session 
 $users_id = $_SESSION['users_id'] ?? ($_SESSION['id'] ?? null);
