@@ -72,7 +72,7 @@ if (isset($_SESSION['users_id'])) {
             color: white;
             padding: 20px;
             text-align: center;
-            margin-top: 297px; /*adjust the footer and should always sticks to the bottom*/
+            margin-top: 500px; /*adjust the footer and should always sticks to the bottom*/
         }
         
         footer a {
