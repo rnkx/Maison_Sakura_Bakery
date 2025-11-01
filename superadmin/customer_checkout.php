@@ -219,6 +219,35 @@ if (empty($items)) {
             .checkout-form button:hover:enabled { background:#c73c65; }
     .error { color:red; font-size:0.9em; display:block; }
                  @media(max-width:900px){main{grid-template-columns:1fr;}}
+                 .back-to-cart {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.back-to-cart a {
+    background: #e75480;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 8px;
+    text-decoration: none;
+    display: inline-block;
+    font-weight: bold;
+    transition: background 0.3s;
+}
+
+.back-to-cart a:hover {
+    background: #c73c65;
+}
+
+/* Sticky button for mobile screens */
+@media (max-width: 900px) {
+    .back-to-cart {
+        position: sticky;
+        top: 10px;
+        z-index: 1000;
+    }
+}
+
  
   </style>
 </head>
@@ -253,8 +282,13 @@ if (empty($items)) {
 
 
 <main>
+
 <!-- Cart Summary -->
-<div class="cart-card">
+<div class="cart-card"> 
+         <!-- Back to Cart Button -->
+  <div class="back-to-cart">
+    <a href="customer_cart.php">&larr; Back to Cart</a>
+</div>
   <h2 class="cart-title">🛒 Your Shopping Cart</h2>
 
   <?php foreach($items as $item): ?>
@@ -267,6 +301,7 @@ if (empty($items)) {
             elseif(file_exists("customer/uploads/".$item['image'])) $imagePath = "customer/uploads/".$item['image'];
         }
       ?>
+  
       <div class="cart-item">
         <img src="<?= htmlspecialchars($imagePath); ?>" alt="<?= htmlspecialchars($item['name']); ?>">
         <div class="cart-item-info">
@@ -296,6 +331,7 @@ if (empty($items)) {
 </div>
   <!-- Checkout Form -->
   <div class="checkout-form">
+       
     <h2>Pickup & Payment</h2>
     <form method="POST" action="customer_checkout_process.php" id="checkoutForm" novalidate>
       <label for="pickup_date">Pickup Date:</label>
