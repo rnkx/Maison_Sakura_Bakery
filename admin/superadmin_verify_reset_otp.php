@@ -40,7 +40,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $error = "Invalid or expired OTP!";
         }
     } else {
-        $error = "User not found!";
+        $error = "superadmin not found!";
     }
 }
 ?>
