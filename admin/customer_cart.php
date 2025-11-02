@@ -234,7 +234,8 @@ if (!empty($row['image'])) {
 </div>
 </form>
 <?php else: ?>
-<p style="text-align:center; font-size:18px;">Your cart is empty. <a href="customer_products.php" style="color:#e75480;">Shop now</a>.</p>
+<p style="text-align:center; font-size:18px;">Your cart is empty. 
+    <a href="customer_products.php" style="color:#e75480;">Shop now</a>.</p>
 <?php endif; ?>
 </main>
 <!-- Footer -->
