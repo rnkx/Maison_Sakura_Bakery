@@ -343,6 +343,7 @@ function confirmDelete() {
         <input type="number" step="0.01" name="discount_percent" placeholder="Discount (%)" min="0" max="100"><br><br>
         <input type="number" name="max_stock" placeholder="Maximum Stock" required><br><br>
         <input type="number" name="initial_stock" placeholder="Initial stock to produce" required><br><br>
+        Expiry Date:
         <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>"><br><br>
         <input type="file" name="image" accept="image/*">
     </div>
