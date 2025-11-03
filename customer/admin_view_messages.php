@@ -102,7 +102,7 @@ a.reply-btn:hover {
     </style>
 </head>
 <body>
-    <h1>📩 Customer Messages</h1>
+    <h1 align="center">📩 Customer Messages</h1>
  <form action="admin_index.php" method="get" style="margin-bottom: 15px;">
     <button type="submit" class="back-button">⬅️ Back to Dashboard</button>
 </form>
