@@ -188,7 +188,7 @@ h2,h4 { color:#e75480; }
 
     <!-- Monthly Revenue Chart -->
     <div class="card p-3 mb-4">
-        <h4 class="text-center mb-3">Monthly Revenue Trend in October & November(After Discount)</h4>
+        <h4 class="text-center mb-3">Monthly Revenue Trend in October & November (After Discount)</h4>
         <canvas id="monthlyRevenueChart"></canvas>
     </div>
 
