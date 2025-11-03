@@ -555,9 +555,27 @@ document.addEventListener("DOMContentLoaded", () => {
         document.getElementById("expiryYearError").textContent = "Expiry year is required.";
         valid = false;
       }
-    }
 
-    return valid;
+  // 🟡 Additional validation for past expiry date
+  if (month && year) {
+    const currentDate = new Date();
+    const currentMonth = currentDate.getMonth() + 1; // Months are 0–11
+    const currentYear = currentDate.getFullYear();
+
+    const enteredMonth = parseInt(month);
+    const enteredYear = parseInt(year);
+
+    if (
+      enteredYear < currentYear ||
+      (enteredYear === currentYear && enteredMonth <= currentMonth)
+    ) {
+      document.getElementById("expiryMonthError").textContent = "Card has expired.";
+      valid = false;
+    }
+  }
+}
+
+return valid;
   }
 
   /** ---------------- Event Listeners ---------------- */
