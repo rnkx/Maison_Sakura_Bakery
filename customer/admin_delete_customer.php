@@ -2,20 +2,20 @@
 session_start();
 include("db.php");
 
-// Ensure admin access only
+// ✅ Ensure only admin can access
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("Location: admin_login.php");
+    header("Location: login_admin.php");
     exit();
 }
 
-// Check if users_id is provided and numeric
+// ✅ Validate and sanitize user ID
 if (!isset($_GET['users_id']) || !is_numeric($_GET['users_id'])) {
-    die("Customer ID is missing or invalid.");
+    die("Invalid customer ID.");
 }
 
 $users_id = intval($_GET['users_id']);
 
-// Fetch customer to confirm deletion
+// ✅ Fetch customer info
 $customer_query = "SELECT fullname, email FROM users WHERE users_id = ?";
 $stmt = mysqli_prepare($conn, $customer_query);
 mysqli_stmt_bind_param($stmt, "i", $users_id);
@@ -28,18 +28,34 @@ if (!$customer) {
     die("Customer not found.");
 }
 
-// Handle deletion when form is submitted
+// ✅ Handle deletion request
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // Check for existing orders before deleting
+    $order_check_query = "SELECT * FROM orders WHERE users_id = ?";
+    $check_stmt = mysqli_prepare($conn, $order_check_query);
+    mysqli_stmt_bind_param($check_stmt, "i", $users_id);
+    mysqli_stmt_execute($check_stmt);
+    $order_result = mysqli_stmt_get_result($check_stmt);
+
+    if (mysqli_num_rows($order_result) > 0) {
+        mysqli_stmt_close($check_stmt);
+        header("Location: admin_manage_customers.php?msg=Cannot+delete+customer+with+existing+orders");
+        exit();
+    }
+    mysqli_stmt_close($check_stmt);
+
+    // Proceed with deletion if no orders found
     $delete_stmt = mysqli_prepare($conn, "DELETE FROM users WHERE users_id = ?");
     mysqli_stmt_bind_param($delete_stmt, "i", $users_id);
 
     if (mysqli_stmt_execute($delete_stmt)) {
         mysqli_stmt_close($delete_stmt);
-        // Redirect with success message
         header("Location: admin_manage_customers.php?msg=Customer+deleted+successfully");
         exit();
     } else {
-        die("Error deleting customer: " . mysqli_error($conn));
+        header("Location: admin_manage_customers.php?msg=Error+deleting+customer");
+        exit();
     }
 }
 ?>
