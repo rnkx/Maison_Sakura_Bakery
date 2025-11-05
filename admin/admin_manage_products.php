@@ -11,6 +11,21 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 }
 
 $msg = "";
+// -------------------------
+// CONFIG
+// -------------------------
+$UPLOAD_DIR = __DIR__ . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR;
+$UPLOAD_WEB_DIR = 'uploads/';          // used in <img src="">
+$ALLOWED_EXT = ['jpg','jpeg','png','gif','webp'];
+$MAX_FILE_SIZE = 5 * 1024 * 1024;     // 5MB
+$DEFAULT_IMAGE = 'default.png';
+$low_stock_threshold = 0;
+$near_expiry_days = 2;
+
+// ensure upload dir exists
+if (!is_dir($UPLOAD_DIR)) {
+    @mkdir($UPLOAD_DIR, 0755, true);
+}
 
 // -------------------------
 // Utility functions
@@ -160,6 +175,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_product'])) {
         }
     }
 }
+// -------- UPDATE PRODUCT IMAGE --------
+if (isset($_POST['update_image'])) {
+    $id = intval($_POST['product_id']);
+    $newImage = uploadImage($_FILES['image'] ?? [], "product_");
+
+    if ($newImage) {
+        // Get current image name
+        $stmt = $conn->prepare("SELECT image FROM products WHERE products_id = ?");
+        $stmt->bind_param("i", $id);
+        $stmt->execute();
+        $stmt->bind_result($oldImage);
+        $stmt->fetch();
+        $stmt->close();
+
+        // Delete old image (if not default)
+        if ($oldImage && $oldImage !== "default.png" && file_exists("uploads/$oldImage")) {
+            unlink("uploads/$oldImage");
+        }
+
+        // Update DB
+        $stmt = $conn->prepare("UPDATE products SET image = ? WHERE products_id = ?");
+        $stmt->bind_param("si", $newImage, $id);
+        if ($stmt->execute()) {
+            $msg = "✅ Product image updated successfully!";
+        } else {
+            $msg = "❌ Failed to update product image.";
+        }
+        $stmt->close();
+    } else {
+        $msg = "⚠️ Please upload a valid image file (jpg, jpeg, png, gif, webp).";
+    }
+}
 
 // -------- UPDATE PRICE / DISCOUNT / MAX STOCK --------
 foreach (['price', 'discount_percent', 'max_stock'] as $field) {
@@ -208,16 +255,7 @@ if (isset($_POST['update_stock'])) {
 
                 if (empty($recipe)) throw new Exception("No recipe found for this product.");
 
-                foreach ($recipe as $rid => $qPerUnit) {
-                    $required = $qPerUnit * $change;
-                    $chk = $conn->prepare("SELECT current_stock FROM raw_items WHERE raw_id = ?");
-                    $chk->bind_param("i", $rid);
-                    $chk->execute();
-                    $chk->bind_result($rawStock);
-                    $chk->fetch();
-                    $chk->close();
-                    if ($rawStock < $required) throw new Exception("❌ Not enough " . getRawName($rid, $conn));
-                }
+             
 
                 $upd = $conn->prepare("UPDATE raw_items SET current_stock = current_stock - ? WHERE raw_id = ?");
                 $log = $conn->prepare("INSERT INTO raw_item_stock_history (raw_id, stock_change, reason, date_updated, created_at) VALUES (?, ?, ?, NOW(), NOW())");
@@ -343,7 +381,6 @@ function confirmDelete() {
         <input type="number" step="0.01" name="discount_percent" placeholder="Discount (%)" min="0" max="100"><br><br>
         <input type="number" name="max_stock" placeholder="Maximum Stock" required><br><br>
         <input type="number" name="initial_stock" placeholder="Initial stock to produce" required><br><br>
-        Expiry Date:
         <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>"><br><br>
         <input type="file" name="image" accept="image/*">
     </div>
