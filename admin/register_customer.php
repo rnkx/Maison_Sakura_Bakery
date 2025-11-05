@@ -62,7 +62,9 @@
             </div>
             <div class="mb-3"> <!--email (only hotmail or gmail) -->
               <label for="email" class="form-label">Email</label>
-          <input type="email" name="email" class="form-control" pattern="^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$" title="Only Gmail or Hotmail addresses are allowed" required>
+          <input type="email" name="email" class="form-control" 
+                 pattern="^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$" 
+                 title="Only Gmail or Hotmail addresses are allowed" required>
             </div> <!--passwprd-->
             <div class="mb-3"> 
               <label for="password" class="form-label">Password</label>
