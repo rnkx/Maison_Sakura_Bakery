@@ -4,7 +4,7 @@ include("db.php");
 
 // ✅ Ensure only admin can access
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
-    header("Location: admin_login.php");
+    header("Location: login_admin.php");
     exit();
 }
 
