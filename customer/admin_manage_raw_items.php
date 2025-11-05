@@ -223,16 +223,44 @@ button { border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
         $near_expiry = ($expiry_date && $expiry_date >= $today && $days_to_expiry <= $expiry_warning_days);
         $is_expired = ($expiry_date && $expiry_date < $today);
 
-        // Send one-time alert email
-        if (($low_stock || $near_expiry) && !isset($email_sent[$r['raw_id']])) {
-            $to = "rachel.ng.ker.xin@gmail.com"; 
-            $subject = "⚠️ Raw Item Alert: {$r['name']}";
-            $message = "Dear Admin,\n\nThere is an alert for '{$r['name']}':\n";
-            if ($low_stock) $message .= "- Stock is low (Current: {$r['current_stock']}).\n";
-            if ($near_expiry) $message .= "- Expiry date is near ({$r['expiry_date']}).\n";
-            sendAlertEmail($to, $subject, $message);
-            $email_sent[$r['raw_id']] = true;
-        }
+      // Send one-time alert email
+if (($low_stock || $near_expiry) && !isset($email_sent[$r['raw_id']])) {
+    $to = "rachel.ng.ker.xin@gmail.com"; 
+    $subject = "⚠️ Inventory Alert: {$r['name']} (Raw Item ID: {$r['raw_id']})";
+
+    // Construct message
+    $message = "Dear Admin,\n\n";
+    $message .= "This is an automated notification regarding the following raw material in the inventory system:\n\n";
+    $message .= "---------------------------------------------\n";
+    $message .= "🔹 Item Name: {$r['name']}\n";
+    $message .= "🔹 Raw Item ID: {$r['raw_id']}\n";
+    if (!empty($r['category'])) $message .= "🔹 Category: {$r['category']}\n";
+    $message .= "🔹 Current Stock: {$r['current_stock']}\n";
+    $message .= "🔹 Expiry Date: {$r['expiry_date']}\n";
+    $message .= "---------------------------------------------\n\n";
+
+    $message .= "⚠️ Alert Details:\n";
+    if ($low_stock) $message .= "- The stock level is below the minimum threshold.\n";
+    if ($near_expiry) $message .= "- The expiry date is approaching soon.\n";
+    $message .= "\n";
+
+    $message .= "📋 Recommended Action:\n";
+    if ($low_stock) $message .= "- Please review current orders and consider restocking this item.\n";
+    if ($near_expiry) $message .= "- Please inspect and plan to use or dispose of near-expiry stock appropriately.\n";
+    $message .= "\n";
+
+    $message .= "This email was generated automatically by the Inventory Monitoring System.\n";
+    $message .= "For any further clarification, please log in to the admin dashboard.\n\n";
+
+    $message .= "Kind regards,\n";
+    $message .= "Inventory Monitoring System\n";
+    $message .= "TechWave Innovations\n";
+
+    // Send email
+    sendAlertEmail($to, $subject, $message);
+    $email_sent[$r['raw_id']] = true;
+}
+
     ?>
 <tr class="<?= ($low_stock || $near_expiry) ? 'low-stock' : '' ?>">
     <td><?= $r['raw_id'] ?></td>
