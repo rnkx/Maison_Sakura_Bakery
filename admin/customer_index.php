@@ -319,7 +319,7 @@ if ($discountPercent > 0) {
                                  <div class="product">
                                      <h3 align="center" style="color:black">Operating Hours</h3><div class="product-grid">
         <p align="center" style="color:black">
-            Monday – Friday: 8:00 AM – 8:00 PM <br/>
+            Monday – Friday: 10:00 AM – 10:00 PM <br/>
             <br/>
             Saturday – Sunday: 9:00 AM – 10:00 PM <br/>
             <br/>

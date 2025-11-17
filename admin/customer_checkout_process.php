@@ -37,8 +37,8 @@ try {
     $total_minutes = $hour * 60 + $minute;
 
     $operating_hours = [
-        ["days" => [1,2,3,4,5,6], "start" => "09:00", "end" => "21:00"],
-        ["days" => [7], "start" => "10:00", "end" => "18:00"],
+        ["days" => [1,2,3,4,5], "start" => "10:00", "end" => "22:00"],
+        ["days" => [6,7], "start" => "09:00", "end" => "22:00"],
     ];
 
     $allowed = false;
