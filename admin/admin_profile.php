@@ -223,9 +223,9 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
   <nav>
     <ul>
       <li><a href="admin_index.php">Dashboard</a></li>
-      <li><a href="manage_orders.php">Orders</a></li>
-      <li><a href="manage_products.php">Products</a></li>
-      <li><a href="manage_customers.php">Customers</a></li>
+      <li><a href="admin_manage_orders.php">Orders</a></li>
+      <li><a href="admin_manage_products.php">Products</a></li>
+      <li><a href="admin_manage_customers.php">Customers</a></li>
       <li><a href="admin_view_messages.php">Messages</a></li>
     <li class="user-dropdown"> 
         <a href="admin_profile.php">
@@ -273,8 +273,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
 
 
  <footer> <p>&copy; <?php echo date("Y"); ?> Maison Sakura Bakery. All rights reserved.</p> <p> 
-                                    <a href="admin_about.php" style="color: white;">About</a> | 
-                                    <a href="admin_contact.php" style="color: white;">Contact</a> | 
+                                  
                                     <a href="admin_privacy_policy.php" style="color: white;">Privacy Policy</a> | 
                                     <a href="admin_terms&conditions.php" style="color: white;">Terms & Conditions</a> </p> 
                             </footer>
