@@ -470,6 +470,8 @@ document.addEventListener("DOMContentLoaded", () => {
       timeError.textContent = "Pickup time is required.";
       valid = false;
     }
+    
+    
 
     return valid;
   }

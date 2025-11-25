@@ -23,7 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
       $errors = [];
         // Validate email (only Gmail & Hotmail)
 if (!preg_match("/^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$/", $email)) {
-    die("Only Gmail or Hotmail email addresses are allowed.");
+     echo "<p style='color:red;'>Only Gmail or Hotmail email addresses with .com are allowed.</p>";
+    echo '<p><button onclick="window.history.back()">Back</button></p>';
+    exit();
 }
         // Basic validation
     if (empty($name)) $errors[] = "Name is required.";

@@ -61,7 +61,7 @@
               <label for="email" class="form-label">Email</label>
              <input type="email" name="email" class="form-control" 
          pattern="^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$"
-         title="Only Gmail or Hotmail addresses are allowed"
+         title="Only Gmail or Hotmail addresses with .com are allowed"
          required>
             </div>
             <div class="mb-3">
