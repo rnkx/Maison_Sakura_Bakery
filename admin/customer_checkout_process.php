@@ -18,23 +18,29 @@ $allowed_ewallets = ["TouchNGo", "GrabPay", "Boost"];
 
 // Begin transaction
 $conn->begin_transaction();
-
 try {
-    // ---------- 1️⃣ Validate pickup ----------
-    if (empty($pickup_date) || empty($pickup_time)) throw new Exception("Pickup date and time required.");
-    $pickup_datetime = DateTime::createFromFormat("Y-m-d H:i", $pickup_date . " " . $pickup_time);
-    if (!$pickup_datetime) throw new Exception("Invalid pickup date/time format.");
+    // ---------------- 1️⃣ Validate pickup date & time ----------------
+    if (empty($pickup_date) || empty($pickup_time)) {
+        throw new Exception("Pickup date and time required.");
+    }
 
-    $now = new DateTime();
-    $max = (clone $now)->modify("+3 days");
-    if ($pickup_datetime <= $now) throw new Exception("Pickup must be in the future.");
-    if ($pickup_datetime > $max) throw new Exception("Pickup cannot exceed 3 days.");
+  date_default_timezone_set('Asia/Kuala_Lumpur');
 
-    // Check operating hours
-    $day = (int)$pickup_datetime->format("N");
-    $time_val = $pickup_datetime->format("H:i");
-    list($hour, $minute) = explode(":", $time_val);
-    $total_minutes = $hour * 60 + $minute;
+$pickup_datetime = DateTime::createFromFormat("Y-m-d H:i", "$pickup_date $pickup_time");
+$now = new DateTime(); // current time in Malaysia
+
+if ($pickup_datetime < $now) {
+    throw new Exception("Pickup time must be from now onwards.");
+}
+
+$max = (clone $now)->modify('+3 days');
+if ($pickup_datetime > $max) {
+    throw new Exception("Pickup cannot exceed 3 days from now.");
+}
+
+    // Operating hours
+    $day = (int)$pickup_datetime->format("N"); // 1=Mon, 7=Sun
+    $pickup_minutes = (int)$pickup_datetime->format("H") * 60 + (int)$pickup_datetime->format("i");
 
     $operating_hours = [
         ["days" => [1,2,3,4,5], "start" => "10:00", "end" => "22:00"],
@@ -46,15 +52,16 @@ try {
         if (in_array($day, $h["days"])) {
             list($sh, $sm) = explode(":", $h["start"]);
             list($eh, $em) = explode(":", $h["end"]);
-            $start_minutes = $sh * 60 + $sm;
-            $end_minutes = $eh * 60 + $em;
-            if ($total_minutes >= $start_minutes && $total_minutes <= $end_minutes) {
+            $start_minutes = $sh*60 + $sm;
+            $end_minutes   = $eh*60 + $em;
+            if ($pickup_minutes >= $start_minutes && $pickup_minutes <= $end_minutes) {
                 $allowed = true;
                 break;
             }
         }
     }
     if (!$allowed) throw new Exception("Pickup time outside operating hours.");
+
 
     // ---------- 2️⃣ Insert order with temporary total_price = 0 ----------
     $stmt_order = $conn->prepare("

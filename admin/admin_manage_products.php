@@ -17,7 +17,7 @@ $msg = "";
 // -------------------------
 $UPLOAD_DIR = __DIR__ . '/uploads/';
 $DEFAULT_IMAGE = 'default.png';
-$low_stock_threshold = 0;
+$low_stock_threshold = 1;
 $near_expiry_days = 2;
 
 // Ensure upload dir exists
@@ -28,7 +28,7 @@ if (!is_dir($UPLOAD_DIR)) mkdir($UPLOAD_DIR, 0755, true);
 // -------------------------
 function validate_expiry($input) {
     $today = new DateTime(date('Y-m-d'));
-    if (empty($input)) return [true, date('Y-m-d', strtotime('+3 days'))];
+    if (empty($input)) return [true, date('Y-m-d', strtotime('+5 days'))];
     $expiry = DateTime::createFromFormat('Y-m-d', $input);
     if (!$expiry) return [false, "⚠️ Invalid expiry date format."];
     if ($expiry < $today) return [false, "⚠️ Expiry date cannot be in the past."];
@@ -194,7 +194,7 @@ if (isset($_POST['update_stock'])) {
                 $recipeRes->bind_param("i",$id); $recipeRes->execute();
                 $result = $recipeRes->get_result(); $recipe = $result->fetch_all(MYSQLI_ASSOC); $recipeRes->close();
 
-                if (empty($recipe)) throw new Exception("❌ No recipe found.");
+                
                 $insufficient = [];
                 foreach ($recipe as $item) {
                     if ($item['current_stock'] < $item['quantity'] * $change) {
@@ -305,9 +305,9 @@ function confirmDelete() {
 </div>
 <div style="flex:1; min-width:250px;">
     <input type="number" step="0.01" name="discount_percent" placeholder="Discount (%)"><br><br>
-    <input type="number" name="max_stock" placeholder="Maximum Stock" required><br><br>
+    <input type="number" name="max_stock" placeholder="Maximum Stock" min="1" required><br><br>
     <input type="number" name="initial_stock" placeholder="Initial Stock" required><br><br>
-    <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>"><br><br>
+    <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+5 days')) ?>"><br><br>
     <input type="file" name="image" accept="image/*">
 </div>
 </div>
@@ -379,14 +379,14 @@ $row_class = $out_of_stock ? 'out-of-stock' : (($low_stock||$near_expiry)?'low-s
 <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
 <input type="number" name="stock_change" placeholder="+ produce / - adjust"><br><br>
 <input type="text" name="reason" placeholder="Reason"><br><br>
-<input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>" value="<?= $p['expiry_date'] ?>"><br><br>
+<input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+5 days')) ?>" value="<?= $p['expiry_date'] ?>"><br><br>
 <button type="submit" name="update_stock" style="background:#e8a0a0;color:#fff;">Update Stock</button>
 </form>
 </td>
 <td>
 <form method="POST">
 <input type="hidden" name="product_id" value="<?= $p['products_id'] ?>">
-<input type="number" name="max_stock" value="<?= $p['max_stock'] ?>"><br><br>
+<input type="number" name="max_stock" min="0" value="<?= $p['max_stock'] ?>"><br><br>
 <button type="submit" name="update_max_stock">Update</button>
 </form>
 </td>

@@ -113,6 +113,13 @@
  
          <strong>Phone:</strong> 017-393-0450, Ms Ng</p>
     </div>
+    <!-- Back Button -->
+<div style="text-align:center; margin-top:30px;">
+    <button onclick="window.history.back()" 
+            style="background-color:#e75480; color:white; border:none; padding:10px 20px; border-radius:5px; cursor:pointer; font-size:16px;">
+        Back
+    </button>
+</div>
   </main>
       
 

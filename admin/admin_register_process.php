@@ -13,22 +13,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $role = $_POST['role'] ?? '';
 
     
-  // Validate email (only Gmail & Hotmail)
+ // Validate email (only Gmail & Hotmail)
 if (!preg_match("/^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$/", $email)) {
-    die("Only Gmail or Hotmail email addresses are allowed.");
+    echo "<p style='color:red;'>Invalid email address.</p>";
+    echo '<p><button onclick="window.history.back()">Back</button></p>';
+    exit();
 }
+
 // Validate minimum length
 if (strlen($password) < 4) {
-    die("Password must be at least 4 characters long.");
+    echo "<p style='color:red;'>Password must be at least 4 characters long.</p>";
+    echo '<p><button onclick="window.history.back()">Back</button></p>';
+    exit();
 }
- // Validate Malaysian phone number
-    if (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
-        die("Phone number must be a valid Malaysian number.");
-    }
-    // password match validation
-    if ($password !== $confirm_password) {
-        die("Passwords do not match!");
-    }
+
+// Validate Malaysian phone number
+if (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
+    echo "<p style='color:red;'>Phone number must be a valid Malaysian number.</p>";
+    echo '<p><button onclick="window.history.back()">Back</button></p>';
+    exit();
+}
+
+// Password match validation
+if ($password !== $confirm_password) {
+    echo "<p style='color:red;'>Passwords do not match!</p>";
+    echo '<p><button onclick="window.history.back()">Back</button></p>';
+    exit();
+}
+
 
     // Insert into DB (no hash, per your requirement)
     $sql = "INSERT INTO users (fullname, email, phone, password, role) 

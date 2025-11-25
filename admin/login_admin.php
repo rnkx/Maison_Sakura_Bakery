@@ -79,6 +79,7 @@ session_start();
           <br/>
           <div class="login-link">
             <p>Not an admin? <a href="login_customer.php">Customer Login</a></p>
+            <p>Don’t have an admin account? <a href="register_admin.php">Register here</a></p>
           </div>
           <div class="login-link">
             <p><a href="admin_forgot_password.php">Forgot Password?</a></p>

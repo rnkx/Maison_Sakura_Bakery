@@ -80,10 +80,10 @@ if (isset($_POST['add_raw_item'])) {
     $max_stock = intval($_POST['max_stock']);
     $current_stock = intval($_POST['initial_stock'] ?? 0);
     $expiry_date = $_POST['expiry_date'] ?? '';
-    $min_date = date('Y-m-d', strtotime('+3 days'));
+    $min_date = date('Y-m-d', strtotime('+5 days'));
 
     if ($expiry_date < $min_date) {
-        $msg = "⚠️ Expiry date must be at least 3 days from today.";
+        $msg = "⚠️ Expiry date must be at least 5 days from today.";
     } else {
         $stmt = prepareStmt($conn, "
             INSERT INTO raw_items (name, unit, current_stock, max_stock, expiry_date, date_issued)
@@ -103,10 +103,10 @@ if (isset($_POST['update_stock'])) {
     $stock_change = intval($_POST['stock_change']);
     $reason = trim($_POST['reason']);
     $expiry_date = $_POST['expiry_date'] ?? '';
-    $min_expiry = date('Y-m-d', strtotime('+3 days'));
+    $min_expiry = date('Y-m-d', strtotime('+5 days'));
 
     if ($expiry_date < $min_expiry) {
-        $msg = "⚠️ Expiry date must be at least 3 days from today.";
+        $msg = "⚠️ Expiry date must be at least 5 days from today.";
     } else {
         // Fetch current and max stock
         $stmt = prepareStmt($conn, "SELECT current_stock, max_stock FROM raw_items WHERE raw_id=?");
@@ -222,10 +222,10 @@ button { border:none; border-radius:6px; padding:6px 12px; cursor:pointer; }
 <form method="POST" style="margin:20px 0;">
     <input type="text" name="name" placeholder="Raw Item Name" required><br><br>
     <input type="text" name="unit" placeholder="Unit (e.g., kg, pcs)" required><br><br>
-    <input type="number" name="max_stock" placeholder="Maximum Stock" min="0" required><br><br>
-    <input type="number" name="initial_stock" placeholder="Initial Stock" min="0"><br><br>
+    <input type="number" name="max_stock" placeholder="Maximum Stock" min="1" required><br><br>
+    <input type="number" name="initial_stock" placeholder="Initial Stock" min="1" required><br><br>
     Expiry Date:
-    <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+3 days')) ?>" required><br><br>
+    <input type="date" name="expiry_date" min="<?= date('Y-m-d', strtotime('+5 days')) ?>" required><br><br>
     <button type="submit" name="add_raw_item">➕ Add Raw Item</button>
 </form>
 
@@ -298,7 +298,7 @@ while ($r = $raw_items->fetch_assoc()):
     <td>
         <form method="POST">
             <input type="hidden" name="raw_id" value="<?= $r['raw_id'] ?>">
-            <input type="number" name="max_stock" value="<?= $r['max_stock'] ?>" min="0" required><br><br>
+            <input type="number" name="max_stock" value="<?= $r['max_stock'] ?>" min="1" required><br><br>
             <button type="submit" name="update_max_stock" class="update-btn">Update Max</button>
         </form>
     </td>

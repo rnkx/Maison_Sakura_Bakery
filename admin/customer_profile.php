@@ -29,7 +29,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST") {
     $profile_image = $user['profile_image']; // keep old image by default
 
     if (!preg_match("/^[\w\.\-]+@(gmail|hotmail)\.com$/", $email)) {
-        $error = "Email must be Gmail or Hotmail.";
+        $error = "Email must be Gmail or Hotmail with .com.";
     } elseif (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
         $error = "Phone must be a valid Malaysia number (+60XXXXXXXXX).";
     } else {
