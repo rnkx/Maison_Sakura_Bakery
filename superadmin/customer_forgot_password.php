@@ -58,16 +58,18 @@ session_start();
             <div class="mb-3">
               <label for="password" class="form-label">New Password</label>
               <input type="password" name="password" class="form-control" 
-                       minlength="4"
-                placeholder="Enter new password (at least 4 characters)" required>
+                      minlength="8"
+    pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$"
+                placeholder="at least 8 characters and include uppercase, lowercase, and a number" required>
             </div>
-
-            <div class="mb-3">
-              <label for="confirm_password" class="form-label">Confirm New Password</label>
-              <input type="password" name="confirm_password" class="form-control" 
-                     minlength="4"
-                placeholder="Confirm new password" required>
-            </div>
+<div class="mb-3">
+  <label for="confirm_password" class="form-label">Confirm New Password</label>
+  <input type="password" name="confirm_password" class="form-control" 
+    minlength="8"
+    pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$"
+    placeholder="match with above password"
+    required>
+</div>
 
             <button type="submit" class="Reset-Button">Update Password</button>
           </form>

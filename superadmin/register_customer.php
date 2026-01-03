@@ -66,19 +66,20 @@
                  pattern="^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$" 
                  title="Only Gmail or Hotmail addresses with .com are allowed" required>
             </div> <!--password-->
-            <div class="mb-3"> 
+             <div class="mb-3">
               <label for="password" class="form-label">Password</label>
               <input type="password" name="password" class="form-control" 
-         minlength="4"
-         placeholder="At least 4 characters"
-         required>
-            </div>   <!--confirm password-->
-              <div class="mb-3">
+                      minlength="8"
+                       placeholder="at least 8 characters and include uppercase, lowercase, and a number"
+    pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$"
+  required>
+            </div> <!--confirm password-->
+             <div class="mb-3">
   <label for="confirm_password" class="form-label">Confirm Password</label>
   <input type="password" name="confirm_password" class="form-control" 
-         minlength="4"
-     
-         required>
+    minlength="8"
+     placeholder="match with above password"
+    pattern="^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$" required>
 </div>
               <div class="mb-3"> <!--phone number (valid malaysian) -->
   <label for="phone" class="form-label">Phone Number</label>

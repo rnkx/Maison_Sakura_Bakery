@@ -8,8 +8,6 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
     exit();
 }
 
-
-
 $users_id = $_SESSION['users_id'];
 
 // ✅ Fetch current admin info
@@ -22,65 +20,99 @@ $user = $result->fetch_assoc();
 $success = "";
 $error = "";
 
-// ✅ Update profile
+// ✅ Update profile logic
 if ($_SERVER["REQUEST_METHOD"] === "POST") {
+
     $fullname = trim($_POST['fullname']);
-    $email = trim($_POST['email']);
-    $phone = trim($_POST['phone']);
+    $email    = trim($_POST['email']);
+    $phone    = trim($_POST['phone']);
     $password = trim($_POST['password']);
-    $profile_image = $user['profile_image']; // keep old image by default
-    
+    $profile_image = $user['profile_image']; // Default old image
+
+    // -----------------------------
+    // 🔍 Validation
+    // -----------------------------
+
+    // Email check
     if (!preg_match("/^[\w\.\-]+@(gmail|hotmail)\.com$/", $email)) {
         $error = "Email must be Gmail or Hotmail with .com.";
-    } elseif (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
+    }
+
+    // Phone check (Malaysia)
+    elseif (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
         $error = "Phone must be a valid Malaysia number (+60XXXXXXXXX).";
-    } else {
-        // ✅ Handle profile image upload
-        if (!empty($_FILES['profile_image']['name'])) {
-            $targetDir = "uploads/";
-            if (!is_dir($targetDir)) {
-                mkdir($targetDir, 0777, true);
-            }
+    }
 
-            $fileName = time() . "_" . basename($_FILES['profile_image']['name']);
-            $targetFile = $targetDir . $fileName;
+    // Password check (only if user wants to change)
+    elseif (!empty($password)) {
+        if (!preg_match("/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/", $password)) {
+            $error = "Password must be at least 8 characters and include uppercase, lowercase, and a number.";
+        }
+    }
 
-            $fileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
-            $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+    // -----------------------------
+    // 🖼 Handle profile image upload
+    // -----------------------------
+    if (empty($error) && !empty($_FILES['profile_image']['name'])) {
 
-            if (in_array($fileType, $allowedTypes)) {
-                if (move_uploaded_file($_FILES['profile_image']['tmp_name'], $targetFile)) {
-                    $profile_image = $fileName;
-                } else {
-                    $error = "Failed to upload image.";
-                }
-            } else {
-                $error = "Only JPG, PNG, and GIF files are allowed.";
-            }
+        $targetDir = "uploads/";
+        if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0777, true);
         }
 
-        if (empty($error)) {
-            // ✅ Secure password (only hash if changed)
-            if (!empty($password)) {
-                $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
-                $stmt = $conn->prepare("UPDATE users SET fullname=?, email=?, phone=?, password=?, profile_image=? WHERE users_id=?");
-                $stmt->bind_param("sssssi", $fullname, $email, $phone, $password, $profile_image, $users_id);
-            } else {
-                $stmt = $conn->prepare("UPDATE users SET fullname=?, email=?, phone=?, profile_image=? WHERE users_id=?");
-                $stmt->bind_param("ssssi", $fullname, $email, $phone, $profile_image, $users_id);
-            }
+        $fileName = time() . "_" . basename($_FILES['profile_image']['name']);
+        $targetFile = $targetDir . $fileName;
 
-            if ($stmt->execute()) {
-                $success = "Profile updated successfully!";
-                $_SESSION['fullname'] = $fullname;
-                $_SESSION['profile_image'] = $profile_image;
-            } else {
-                $error = "Failed to update profile. Please try again.";
-            }
+        $fileType = strtolower(pathinfo($targetFile, PATHINFO_EXTENSION));
+        $allowedTypes = ['jpg', 'jpeg', 'png', 'gif'];
+
+        if (!in_array($fileType, $allowedTypes)) {
+            $error = "Only JPG, PNG, and GIF files are allowed.";
+        } elseif (move_uploaded_file($_FILES['profile_image']['tmp_name'], $targetFile)) {
+            $profile_image = $fileName;
+        } else {
+            $error = "Failed to upload image.";
+        }
+    }
+
+    // -----------------------------
+    // 💾 Update database (only if no errors)
+    // -----------------------------
+    if (empty($error)) {
+
+        // With password change
+        if (!empty($password)) {
+            $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
+
+            $stmt = $conn->prepare("
+                UPDATE users 
+                SET fullname=?, email=?, phone=?, password=?, profile_image=? 
+                WHERE users_id=?
+            ");
+            $stmt->bind_param("sssssi", $fullname, $email, $phone, $hashedPassword, $profile_image, $users_id);
+        }
+
+        // Without password change
+        else {
+            $stmt = $conn->prepare("
+                UPDATE users 
+                SET fullname=?, email=?, phone=?, profile_image=? 
+                WHERE users_id=?
+            ");
+            $stmt->bind_param("ssssi", $fullname, $email, $phone, $profile_image, $users_id);
+        }
+
+        if ($stmt->execute()) {
+            $success = "Profile updated successfully!";
+            $_SESSION['fullname'] = $fullname;
+            $_SESSION['profile_image'] = $profile_image;
+        } else {
+            $error = "Failed to update profile. Please try again.";
         }
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="en">
 <head>

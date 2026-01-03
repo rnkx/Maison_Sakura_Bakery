@@ -1,61 +1,72 @@
 <?php
-// external php files connection
 include("db.php");
 
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $fullname = $_POST['fullname']  ?? '';
     $email = $_POST['email'] ?? '';
-    $phone = $_POST['phone'] ?? ''; // ✅ new field
+    $phone = $_POST['phone'] ?? '';
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
-    $role = $_POST['role'] ?? '';
-    
+    $role = $_POST['role'] ?? 'customer'; // default role
 
-// Validate email (only Gmail & Hotmail)
-if (!preg_match("/^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$/", $email)) {
-    echo "<p style='color:red;'>Invalid email address.</p>";
-    echo '<p><button onclick="window.history.back()">Back</button></p>';
-    exit();
-}
+    // -----------------------------
+    // Email validation (Gmail/Hotmail only)
+    // -----------------------------
+    if (!preg_match("/^[a-zA-Z0-9._%+-]+@(gmail|hotmail)\.com$/", $email)) {
+        echo "<p style='color:red;'>Invalid email address. Only Gmail or Hotmail with .com allowed.</p>";
+        echo '<p><button onclick="window.history.back()">Back</button></p>';
+        exit();
+    }
 
-// Validate minimum length
-if (strlen($password) < 4) {
-    echo "<p style='color:red;'>Password must be at least 4 characters long.</p>";
-    echo '<p><button onclick="window.history.back()">Back</button></p>';
-    exit();
-}
+    // -----------------------------
+    // Password strength validation
+    // -----------------------------
+    if (!preg_match("/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/", $password)) {
+        echo "<p style='color:red;'>Password must be at least 8 characters, include uppercase, lowercase, and a number.</p>";
+        echo '<p><button onclick="window.history.back()">Back</button></p>';
+        exit();
+    }
 
-// Validate Malaysian phone number
-if (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
-    echo "<p style='color:red;'>Phone number must be a valid Malaysian number.</p>";
-    echo '<p><button onclick="window.history.back()">Back</button></p>';
-    exit();
-}
+    // -----------------------------
+    // Confirm password match
+    // -----------------------------
+    if ($password !== $confirm_password) {
+        echo "<p style='color:red;'>Passwords do not match!</p>";
+        echo '<p><button onclick="window.history.back()">Back</button></p>';
+        exit();
+    }
 
-// Password match validation
-if ($password !== $confirm_password) {
-    echo "<p style='color:red;'>Passwords do not match!</p>";
-    echo '<p><button onclick="window.history.back()">Back</button></p>';
-    exit();
-}
+    // -----------------------------
+    // Malaysian phone validation
+    // -----------------------------
+    if (!preg_match("/^(\+60\d{8,9}|01\d{8,9})$/", $phone)) {
+        echo "<p style='color:red;'>Phone number must be a valid Malaysian number.</p>";
+        echo '<p><button onclick="window.history.back()">Back</button></p>';
+        exit();
+    }
 
+    // -----------------------------
+    // Hash password before storing
+    // -----------------------------
+    $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-    // Insert into DB (no hash, per your requirement)
+    // -----------------------------
+    // Insert into database
+    // -----------------------------
     $sql = "INSERT INTO users (fullname, email, phone, password, role) 
             VALUES (?, ?, ?, ?, ?)";
     $stmt = $conn->prepare($sql);
-    $stmt->bind_param("sssss", $fullname, $email, $phone, $password, $role);
+    $stmt->bind_param("sssss", $fullname, $email, $phone, $hashedPassword, $role);
 
-   if ($stmt->execute()) {
-      echo "<p>Registration successful! </p>";   
-    echo '<p><a href="login_customer.php"><button>Login Now</button></a></p>';
-}else {
-        echo "<p style='color:red;'>Error: Duplicate Email Account! Please try a different email account</p>";
-         echo '<p><a href="register_customer.php"><button>Back</button></a></p>';
+    if ($stmt->execute()) {
+        echo "<p>Registration successful!</p>";   
+        echo '<p><a href="login_customer.php"><button>Login Now</button></a></p>';
+    } else {
+        echo "<p style='color:red;'>Error: Duplicate Email Account! Please try a different email account.</p>";
+        echo '<p><a href="register_customer.php"><button>Back</button></a></p>';
     }
 
     $stmt->close();
     $conn->close();
 }
 ?>
-

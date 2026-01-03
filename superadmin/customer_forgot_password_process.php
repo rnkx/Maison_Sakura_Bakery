@@ -7,19 +7,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
 
+    // ------------------------------------------
+    // 📌 Required fields check
+    // ------------------------------------------
     if (empty($email) || empty($password) || empty($confirm_password)) {
         $_SESSION['error'] = "All fields are required.";
         header("Location: customer_forgot_password.php");
         exit();
     }
 
+    // ------------------------------------------
+    // 📌 Email format validation
+    // ------------------------------------------
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $_SESSION['error'] = "Invalid email format.";
+        header("Location: customer_forgot_password.php");
+        exit();
+    }
+
+    // ------------------------------------------
+    // 📌 Password match check
+    // ------------------------------------------
     if ($password !== $confirm_password) {
         $_SESSION['error'] = "Passwords do not match.";
         header("Location: customer_forgot_password.php");
         exit();
     }
 
-    // Check if user exists
+    // ------------------------------------------
+    // 📌 Password strength check
+    // ------------------------------------------
+    if (!preg_match("/^(?=.*[A-Z])(?=.*[a-z])(?=.*\d).{8,}$/", $password)) {
+        $_SESSION['error'] = "Password must be at least 8 characters long, include uppercase, lowercase, and a number.";
+        header("Location: customer_forgot_password.php");
+        exit();
+    }
+
+    // ------------------------------------------
+    // 📌 Check if customer exists
+    // ------------------------------------------
     $stmt = $conn->prepare("SELECT users_id FROM users WHERE email = ? AND role = 'customer'");
     $stmt->bind_param("s", $email);
     $stmt->execute();
@@ -31,11 +57,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    
+    // ------------------------------------------
+    // 🔐 Hash the new password
+    // ------------------------------------------
+    $hashedPassword = password_hash($password, PASSWORD_DEFAULT);
 
-    // Update password directly
+    // ------------------------------------------
+    // 📌 Update password
+    // ------------------------------------------
     $stmt2 = $conn->prepare("UPDATE users SET password = ? WHERE email = ?");
-    $stmt2->bind_param("ss", $password, $email);
+    $stmt2->bind_param("ss", $hashedPassword, $email);
     $stmt2->execute();
 
     $_SESSION['success'] = "Password updated successfully. You can now login.";
