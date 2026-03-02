@@ -72,7 +72,7 @@ $cancelled_result = mysqli_query($conn, $cancelled_sql);
 $total_cancelled = mysqli_fetch_assoc($cancelled_result)['total_cancelled'] ?? 0;
 
 // ===========================
-// 📈 MONTHLY REVENUE TREND (After Discount) — Full Year 2025
+// 📈 MONTHLY REVENUE TREND (After Discount) — Full Year 2026
 // ===========================
 $monthly_sql = "
     SELECT DATE_FORMAT(o.created_at, '%Y-%m') AS month,
@@ -80,7 +80,7 @@ $monthly_sql = "
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.order_id
     WHERE TRIM(LOWER(o.payment_status)) IN $paid_statuses
-      AND YEAR(o.created_at) = 2025
+      AND YEAR(o.created_at) = 2026
     GROUP BY month
     ORDER BY month ASC
 ";
@@ -92,17 +92,17 @@ while ($row = mysqli_fetch_assoc($monthly_result)) {
     $revenue_by_month[$row['month']] = (float)$row['revenue'];
 }
 
-// Generate all months of 2025 (even missing)
+// Generate all months of 2026 (even missing)
 $months = [];
 $revenues = [];
 for ($m = 1; $m <= 12; $m++) {
-    $month_key = sprintf("2025-%02d", $m);
+    $month_key = sprintf("2026-%02d", $m);
     $months[] = $month_key;
     $revenues[] = $revenue_by_month[$month_key] ?? 0; // Default 0 if no data
 }
 
 // ===========================
-// 📈 YEARLY REVENUE TREND (After Discount) — From 2022 to 2025
+// 📈 YEARLY REVENUE TREND (After Discount) — From 2022 to 2026
 // ===========================
 $yearly_sql = "
     SELECT YEAR(o.created_at) AS year,
@@ -110,7 +110,7 @@ $yearly_sql = "
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.order_id
     WHERE TRIM(LOWER(o.payment_status)) IN $paid_statuses
-      AND YEAR(o.created_at) BETWEEN 2022 AND 2025
+      AND YEAR(o.created_at) BETWEEN 2022 AND 2026
     GROUP BY year
     ORDER BY year ASC
 ";
@@ -122,10 +122,10 @@ while ($row = mysqli_fetch_assoc($yearly_result)) {
     $revenue_by_year[$row['year']] = (float)$row['revenue'];
 }
 
-// Generate all years 2022–2025 (even missing)
+// Generate all years 2022–2026 (even missing)
 $years = [];
 $yearly_revenues = [];
-for ($y = 2022; $y <= 2025; $y++) {
+for ($y = 2022; $y <= 2026; $y++) {
     $years[] = $y;
     $yearly_revenues[] = $revenue_by_year[$y] ?? 0;
 }
@@ -210,13 +210,13 @@ h2,h4 { color:#e75480; }
 
 <!-- Monthly Revenue Chart -->
 <div class="card p-3 mb-4">
-    <h4 class="text-center mb-3">Monthly Revenue Trend (Jan–Dec 2025, After Discount)</h4>
+    <h4 class="text-center mb-3">Monthly Revenue Trend (Jan–Dec 2026, After Discount)</h4>
     <canvas id="monthlyRevenueChart"></canvas>
 </div>
 
 <!-- Yearly Revenue Chart -->
 <div class="card p-3 mb-4">
-    <h4 class="text-center mb-3">Yearly Revenue Trend (2022–2025, After Discount)</h4>
+    <h4 class="text-center mb-3">Yearly Revenue Trend (2022–2026, After Discount)</h4>
     <canvas id="yearlyRevenueChart"></canvas>
 </div>
 
