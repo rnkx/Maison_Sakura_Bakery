@@ -40,7 +40,7 @@ function record_audit($conn, $action, $table, $record_id) {
 if (isset($_POST['add_admin'])) {
     $fullname = trim($_POST['fullname']);
     $email = trim($_POST['email']);
-    $password = trim($_POST['password']); // no hash (as requested)
+    $password = password_hash(trim($_POST['password']), PASSWORD_DEFAULT); // hash (as requested)
     $phone = trim($_POST['phone']);
     $role = 'admin';
     $profile_image = '';
@@ -57,11 +57,16 @@ if (isset($_POST['add_admin'])) {
         header("Location: manage_admin.php");
         exit();
     }
-    if (strlen($password) < 4) {
-        $_SESSION['message'] = "❌ Password must be at least 4 characters long";
-        header("Location: manage_admin.php");
-        exit();
-    }
+  if (
+    strlen($password) < 8 ||
+    !preg_match('/[A-Z]/', $password) ||   // at least one uppercase
+    !preg_match('/[a-z]/', $password) ||   // at least one lowercase
+    !preg_match('/[0-9]/', $password)      // at least one number
+) {
+    $_SESSION['message'] = "❌ Password must be at least 8 characters and include uppercase, lowercase, and a number.";
+    header("Location: manage_admin.php");
+    exit();
+}
 
     // ✅ Handle profile image upload
     if (!empty($_FILES['profile_image']['name'])) {
