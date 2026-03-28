@@ -90,7 +90,7 @@ $stmt_orders->close();
       box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin-bottom: 30px;
       max-width: 800px; margin-left:auto; margin-right:auto;
     }
-    h2, h3 { color:#e75480; margin-bottom:10px; }
+    h2, h3 { color:black; margin-bottom:10px; }
     table { width:100%; border-collapse: collapse; margin-top:10px; }
     th, td { padding:10px; border-bottom:1px solid #eee; text-align:left; }
     th { background:#fce4ec; }
