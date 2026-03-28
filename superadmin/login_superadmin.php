@@ -76,10 +76,7 @@ session_start();
             <button type="submit" class="Login-Button">Login</button>
           </form>
 
-          <br/>
-          <div class="login-link">
-            <p>Not a super admin? <a href="login_admin.php">Admin Login</a> | <a href="login_customer.php">Customer Login</a></p>
-          </div>
+       
           <div class="login-link">
             <p><a href="superadmin_forgot_password.php">Forgot Password?</a></p>
           </div>
