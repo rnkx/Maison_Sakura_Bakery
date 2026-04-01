@@ -29,7 +29,7 @@ try {
 $pickup_datetime = DateTime::createFromFormat("Y-m-d H:i", "$pickup_date $pickup_time");
 $now = new DateTime(); // current time in Malaysia
 
-if ($pickup_datetime <= $now) {
+if ($pickup_datetime < $now) {
     throw new Exception("Pickup time must be from now onwards.");
 }
 
