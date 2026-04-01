@@ -110,7 +110,7 @@ $yearly_sql = "
     FROM orders o
     JOIN order_items oi ON oi.order_id = o.order_id
     WHERE TRIM(LOWER(o.payment_status)) IN $paid_statuses
-      AND YEAR(o.created_at) BETWEEN 2026 AND 2026
+      AND YEAR(o.created_at) BETWEEN 2024 AND 2026
     GROUP BY year
     ORDER BY year ASC
 ";
@@ -125,7 +125,7 @@ while ($row = mysqli_fetch_assoc($yearly_result)) {
 // Generate all years 2026–2026 (even missing)
 $years = [];
 $yearly_revenues = [];
-for ($y = 2026; $y <= 2026; $y++) {
+for ($y = 2024; $y <= 2026; $y++) {
     $years[] = $y;
     $yearly_revenues[] = $revenue_by_year[$y] ?? 0;
 }
@@ -216,7 +216,7 @@ h2,h4 { color:#e75480; }
 
 <!-- Yearly Revenue Chart -->
 <div class="card p-3 mb-4">
-    <h4 class="text-center mb-3">Yearly Revenue Trend (2026–2026, After Discount)</h4>
+    <h4 class="text-center mb-3">Yearly Revenue Trend (2024–2026, After Discount)</h4>
     <canvas id="yearlyRevenueChart"></canvas>
 </div>
 
