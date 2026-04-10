@@ -150,16 +150,39 @@ if (isset($_POST['update_stock'])) {
 // =====================
 // UPDATE MAX STOCK
 // =====================
+// =====================
+// UPDATE MAX STOCK
+// =====================
 if (isset($_POST['update_max_stock'])) {
     $id = intval($_POST['raw_id']);
     $max = intval($_POST['max_stock']);
 
     if ($id > 0 && $max >= 0) {
-        $stmt = prepareStmt($conn, "UPDATE raw_items SET max_stock=? WHERE raw_id=?");
-        $stmt->bind_param("ii", $max, $id);
-        $stmt->execute();
-        $stmt->close();
-        $msg = "✅ Max stock updated!";
+
+        // 🔍 Get current stock
+        $check = prepareStmt($conn, "SELECT current_stock FROM raw_items WHERE raw_id=?");
+        $check->bind_param("i", $id);
+        $check->execute();
+        $check->bind_result($currentStock);
+        $check->fetch();
+        $check->close();
+
+        // ❌ Validation: current stock must NOT exceed max stock
+        if ($currentStock > $max) {
+            $msg = "❌ Cannot update max stock. Current stock ($currentStock) exceeds new max ($max).";
+        } else {
+            // ✅ Proceed update
+            $stmt = prepareStmt($conn, "UPDATE raw_items SET max_stock=? WHERE raw_id=?");
+            $stmt->bind_param("ii", $max, $id);
+
+            if ($stmt->execute()) {
+                $msg = "✅ Max stock updated!";
+            } else {
+                $msg = "❌ Error: " . $stmt->error;
+            }
+
+            $stmt->close();
+        }
     }
 }
 
