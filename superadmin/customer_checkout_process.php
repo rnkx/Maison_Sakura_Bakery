@@ -43,8 +43,8 @@ if ($pickup_datetime > $max) {
     $pickup_minutes = (int)$pickup_datetime->format("H") * 60 + (int)$pickup_datetime->format("i");
 
     $operating_hours = [
-        ["days" => [1,2,3,4,5], "start" => "10:00", "end" => "22:00"],
-        ["days" => [6,7], "start" => "09:00", "end" => "22:00"],
+        ["days" => [1,2,3,4,5], "start" => "10:00", "end" => "21:00"],
+        ["days" => [6,7], "start" => "09:00", "end" => "20:00"],
     ];
 
     $allowed = false;
