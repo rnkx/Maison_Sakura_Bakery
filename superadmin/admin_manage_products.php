@@ -160,17 +160,60 @@ if (isset($_POST['update_image'])) {
     } else $msg = "⚠️ Please upload a valid image file.";
 }
 
-// -------- UPDATE PRICE / DISCOUNT / MAX STOCK --------
 foreach (['price','discount_percent','max_stock'] as $field) {
-    $postKey = "update_" . $field;
-    if (isset($_POST[$postKey])) {
-        $id = intval($_POST['product_id']);
-        $val = ($field==='max_stock') ? intval($_POST[$field]) : floatval($_POST[$field]);
+
+    // special case for discount button name
+    if ($field === 'discount_percent') {
+        $postKey = "update_discount";
+    } else {
+        $postKey = "update_" . $field;
+    }
+
+   if (isset($_POST[$postKey])) {
+    $id = intval($_POST['product_id']);
+    $val = ($field === 'max_stock') ? intval($_POST[$field]) : floatval($_POST[$field]);
+
+    // 🔥 Check BEFORE updating max_stock
+    if ($field === 'max_stock') {
+
+        $check = $conn->prepare("SELECT current_stock FROM products WHERE products_id=?");
+        $check->bind_param("i", $id);
+        $check->execute();
+        $check->bind_result($currentStock);
+        $check->fetch();
+        $check->close();
+
+        // ❌ If stock > 0 → block update
+        if ($currentStock > 0) {
+            $msg = "❌ Cannot update maximum stock. Current stock must be 0 (current: $currentStock).";
+        } else {
+            // ✅ Proceed update
+            $stmt = $conn->prepare("UPDATE products SET max_stock=? WHERE products_id=?");
+            $stmt->bind_param("ii", $val, $id);
+
+            if ($stmt->execute()) {
+                $msg = "✅ Maximum stock updated!";
+            } else {
+                $msg = "❌ Error: " . $stmt->error;
+            }
+
+            $stmt->close();
+        }
+
+    } else {
+        // ✅ Normal update (price, discount)
         $stmt = $conn->prepare("UPDATE products SET $field=? WHERE products_id=?");
-        $stmt->bind_param(($field==='max_stock')?"ii":"di",$val,$id);
-        $msg = $stmt->execute() ? "✅ $field updated!" : "❌ Failed to update $field.";
+        $stmt->bind_param("di", $val, $id);
+
+        if ($stmt->execute()) {
+            $msg = "✅ $field updated!";
+        } else {
+            $msg = "❌ Error: " . $stmt->error;
+        }
+
         $stmt->close();
     }
+}
 }
 
 // -------- UPDATE STOCK --------
