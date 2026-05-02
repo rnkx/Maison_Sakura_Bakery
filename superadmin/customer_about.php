@@ -265,7 +265,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'customer') {
       </div>
       <div style="flex: 1; min-width: 300px;">
         <p>
-          Established in 2026, we began as a humble neighborhood bakery with a heartfelt vision: to share the warmth of 
+          Established in March 2026, we began as a humble neighborhood bakery with a heartfelt vision: to share the warmth of 
           traditional recipes while embracing the creativity of modern flavors. What started as a small family-run shop quickly 
           became a beloved gathering place for our community, where the aroma of freshly baked bread and pastries filled the air 
           each morning.
